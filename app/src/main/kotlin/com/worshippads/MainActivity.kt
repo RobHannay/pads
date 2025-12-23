@@ -113,6 +113,7 @@ fun WorshipPadsApp(audioEngine: AudioEngine) {
 
 private const val CHARTBUILDER_PACKAGE = "com.multitracks.chartbuilder"
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     audioEngine: AudioEngine,
