@@ -223,6 +223,42 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
 
     fun isCrossfading(): Boolean = _isCrossfading
 
+    fun getPlayerStates(): List<PlayerState> {
+        val states = mutableListOf<PlayerState>()
+        primaryPlayer?.let {
+            try {
+                states.add(PlayerState(
+                    label = if (_isCrossfading) "(old)" else "",
+                    position = it.currentPosition,
+                    duration = it.duration,
+                    volume = if (_isCrossfading) {
+                        // During crossfade, primary is fading out
+                        volume * (1f - getCrossfadeProgress())
+                    } else volume
+                ))
+            } catch (_: Exception) {}
+        }
+        secondaryPlayer?.let {
+            try {
+                states.add(PlayerState(
+                    label = "(new)",
+                    position = it.currentPosition,
+                    duration = it.duration,
+                    volume = volume * getCrossfadeProgress()
+                ))
+            } catch (_: Exception) {}
+        }
+        return states
+    }
+
+    private fun getCrossfadeProgress(): Float {
+        if (!_isCrossfading) return 0f
+        val secondary = secondaryPlayer ?: return 0f
+        return try {
+            (secondary.currentPosition.toFloat() / loopCrossfadeDurationMs).coerceIn(0f, 1f)
+        } catch (_: Exception) { 0f }
+    }
+
     fun getCurrentPosition(): Int = if (isPrepared) {
         try {
             primaryPlayer?.currentPosition ?: 0
@@ -255,6 +291,13 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
         stop()
     }
 }
+
+data class PlayerState(
+    val label: String,
+    val position: Int,
+    val duration: Int,
+    val volume: Float
+)
 
 enum class MusicalKey(val noteName: String, val majorResource: String, val minorResource: String) {
     C("C", "c", "c_minor"),

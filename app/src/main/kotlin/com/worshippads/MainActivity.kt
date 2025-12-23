@@ -119,8 +119,8 @@ fun MainScreen(
     var playbackInfo by remember { mutableStateOf<PlaybackInfo?>(null) }
 
     // Update playback info every 100ms when debug overlay is shown
-    LaunchedEffect(showDebugOverlay, activePad) {
-        if (showDebugOverlay && activePad != null) {
+    LaunchedEffect(showDebugOverlay) {
+        if (showDebugOverlay) {
             while (true) {
                 playbackInfo = audioEngine.getPlaybackInfo()
                 delay(100)
@@ -222,36 +222,60 @@ fun DebugOverlay(
             .padding(horizontal = 20.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = playbackInfo.formatTime(
-                    if (isScrubbing) scrubPosition.toInt() else playbackInfo.currentPosition
-                ),
-                color = AppColors.textPrimary,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
-            if (playbackInfo.isCrossfading) {
+        // Player states
+        playbackInfo.playerStates.forEach { state ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = "CROSSFADING",
-                    color = AppColors.accentPrimary,
+                    text = state.label,
+                    color = AppColors.textMuted,
                     fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.width(70.dp)
+                )
+                Text(
+                    text = "${playbackInfo.formatTime(state.position)} / ${playbackInfo.formatTime(state.duration)}",
+                    color = AppColors.textPrimary,
+                    fontSize = 10.sp
+                )
+                // Volume bar
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(AppColors.surfaceLight)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(state.volume)
+                            .background(AppColors.accentPrimary)
+                    )
+                }
+                Text(
+                    text = "${(state.volume * 100).toInt()}%",
+                    color = AppColors.textMuted,
+                    fontSize = 10.sp,
+                    modifier = Modifier.width(32.dp)
                 )
             }
-            Text(
-                text = "-${playbackInfo.formatTime(playbackInfo.remaining)}",
-                color = AppColors.accentPrimary,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Spacer(modifier = Modifier.height(4.dp))
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
+        if (playbackInfo.isCrossfading) {
+            Text(
+                text = "CROSSFADING",
+                color = AppColors.accentPrimary,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+        }
 
         Slider(
             value = if (isScrubbing) scrubPosition else playbackInfo.currentPosition.toFloat(),

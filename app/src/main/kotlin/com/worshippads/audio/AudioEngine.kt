@@ -92,15 +92,42 @@ class AudioEngine(private val context: Context) {
     }
 
     fun getPlaybackInfo(): PlaybackInfo? {
-        val activePad = _activePad.value ?: return null
-        val minor = _isMinor.value
-        val player = getPlayers(minor)[activePad] ?: return null
-        if (!player.isActive()) return null
+        // Gather all active player states across all keys and modes
+        val allPlayerStates = mutableListOf<PlayerState>()
+
+        majorPlayers.forEach { (key, p) ->
+            if (p.isActive()) {
+                p.getPlayerStates().forEach { state ->
+                    val suffix = if (state.label.isNotEmpty()) " ${state.label}" else ""
+                    allPlayerStates.add(state.copy(
+                        label = "${key.noteName}$suffix"
+                    ))
+                }
+            }
+        }
+        minorPlayers.forEach { (key, p) ->
+            if (p.isActive()) {
+                p.getPlayerStates().forEach { state ->
+                    val suffix = if (state.label.isNotEmpty()) " ${state.label}" else ""
+                    allPlayerStates.add(state.copy(
+                        label = "${key.noteName}m$suffix"
+                    ))
+                }
+            }
+        }
+
+        // Return null only if no players are active
+        if (allPlayerStates.isEmpty()) return null
+
+        // Get duration from any active player
+        val anyActivePlayer = majorPlayers.values.find { it.isActive() }
+            ?: minorPlayers.values.find { it.isActive() }
 
         return PlaybackInfo(
-            currentPosition = player.getCurrentPosition(),
-            duration = player.getDuration(),
-            isCrossfading = player.isCrossfading()
+            currentPosition = anyActivePlayer?.getCurrentPosition() ?: 0,
+            duration = anyActivePlayer?.getDuration() ?: 0,
+            isCrossfading = allPlayerStates.any { it.label.contains("(old)") || it.label.contains("(new)") },
+            playerStates = allPlayerStates
         )
     }
 
@@ -274,7 +301,8 @@ class AudioEngine(private val context: Context) {
 data class PlaybackInfo(
     val currentPosition: Int,
     val duration: Int,
-    val isCrossfading: Boolean = false
+    val isCrossfading: Boolean = false,
+    val playerStates: List<PlayerState> = emptyList()
 ) {
     val remaining: Int get() = (duration - currentPosition).coerceAtLeast(0)
 
