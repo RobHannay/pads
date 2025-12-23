@@ -186,7 +186,7 @@ fun MainScreen(
                     // ChartBuilder button (only if installed)
                     if (chartBuilderIntent != null) {
                         TooltipBox(
-                            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
                             tooltip = {
                                 PlainTooltip {
                                     Text("Open ChartBuilder")
@@ -212,7 +212,7 @@ fun MainScreen(
                     }
                     // Volume button
                     TooltipBox(
-                        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
                         tooltip = { PlainTooltip { Text("Open volume slider") } },
                         state = rememberTooltipState()
                     ) {
@@ -239,7 +239,7 @@ fun MainScreen(
                     }
                     // Settings button
                     TooltipBox(
-                        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
                         tooltip = { PlainTooltip { Text("Settings") } },
                         state = rememberTooltipState()
                     ) {
