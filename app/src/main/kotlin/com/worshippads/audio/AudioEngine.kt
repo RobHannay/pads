@@ -1,6 +1,8 @@
 package com.worshippads.audio
 
 import android.content.Context
+import android.content.Intent
+import android.os.Build
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -8,7 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlin.coroutines.coroutineContext
 import kotlin.math.max
 
-class AudioEngine(context: Context) {
+class AudioEngine(private val context: Context) {
     private val majorPlayers = mutableMapOf<MusicalKey, PadPlayer>()
     private val minorPlayers = mutableMapOf<MusicalKey, PadPlayer>()
 
@@ -35,6 +37,22 @@ class AudioEngine(context: Context) {
     }
 
     private fun getPlayers(minor: Boolean) = if (minor) minorPlayers else majorPlayers
+
+    private fun startForegroundService(key: MusicalKey, isMinor: Boolean) {
+        val intent = Intent(context, AudioService::class.java).apply {
+            putExtra(AudioService.EXTRA_KEY_NAME, key.noteName)
+            putExtra(AudioService.EXTRA_IS_MINOR, isMinor)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
+    }
+
+    private fun stopForegroundService() {
+        context.stopService(Intent(context, AudioService::class.java))
+    }
 
     fun setFadeInDuration(durationSeconds: Float) {
         val durationMs = (durationSeconds * 1000).toLong()
@@ -78,6 +96,7 @@ class AudioEngine(context: Context) {
 
         // If a pad is playing, crossfade to the same key in the new mode
         if (currentPad != null) {
+            startForegroundService(currentPad, minor) // Update notification
             currentFadeJob?.cancel()
             currentFadeJob = scope.launch {
                 crossfadeMode(currentPad, wasMinor, minor)
@@ -95,9 +114,11 @@ class AudioEngine(context: Context) {
             _activePad.value = null
             currentFadeJob = scope.launch {
                 fadeOut(key, minor)
+                stopForegroundService()
             }
         } else {
             _activePad.value = key
+            startForegroundService(key, minor)
             currentFadeJob = scope.launch {
                 if (currentPad != null) {
                     crossfade(currentPad, key, minor)
@@ -200,6 +221,7 @@ class AudioEngine(context: Context) {
     fun cleanup() {
         currentFadeJob?.cancel()
         scope.cancel()
+        stopForegroundService()
         majorPlayers.values.forEach { it.stop() }
         minorPlayers.values.forEach { it.stop() }
     }
