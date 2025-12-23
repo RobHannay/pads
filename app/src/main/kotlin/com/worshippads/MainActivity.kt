@@ -38,9 +38,8 @@ import com.worshippads.audio.PlaybackInfo
 import com.worshippads.ui.AnimatedBackground
 import com.worshippads.ui.AppColors
 import com.worshippads.ui.PadGrid
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.HazeStyle
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawBackdrop
 
 class MainActivity : ComponentActivity() {
     private lateinit var audioEngine: AudioEngine
@@ -72,13 +71,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun WorshipPadsApp(audioEngine: AudioEngine) {
     val navController = rememberNavController()
-    val hazeState = remember { HazeState() }
     val activePad by audioEngine.activePad.collectAsState()
 
     AnimatedBackground(
-        hazeState = hazeState,
         isPlaying = activePad != null
-    ) {
+    ) { backdrop ->
         NavHost(
             navController = navController,
             startDestination = "main",
@@ -91,14 +88,14 @@ fun WorshipPadsApp(audioEngine: AudioEngine) {
                 MainScreen(
                     audioEngine = audioEngine,
                     onSettingsClick = { navController.navigate("settings") },
-                    hazeState = hazeState
+                    backdrop = backdrop
                 )
             }
             composable("settings") {
                 SettingsScreen(
                     audioEngine = audioEngine,
                     onBack = { navController.popBackStack() },
-                    hazeState = hazeState
+                    backdrop = backdrop
                 )
             }
         }
@@ -109,7 +106,7 @@ fun WorshipPadsApp(audioEngine: AudioEngine) {
 fun MainScreen(
     audioEngine: AudioEngine,
     onSettingsClick: () -> Unit,
-    hazeState: HazeState
+    backdrop: Backdrop
 ) {
     val activePad by audioEngine.activePad.collectAsState()
     val isMinor by audioEngine.isMinor.collectAsState()
@@ -186,7 +183,7 @@ fun MainScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                hazeState = hazeState
+                backdrop = backdrop
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -261,7 +258,7 @@ fun DebugOverlay(
 fun SettingsScreen(
     audioEngine: AudioEngine,
     onBack: () -> Unit,
-    hazeState: HazeState
+    backdrop: Backdrop
 ) {
     var fadeInDuration by remember { mutableFloatStateOf(audioEngine.getFadeInDuration()) }
     var fadeOutDuration by remember { mutableFloatStateOf(audioEngine.getFadeOutDuration()) }
@@ -315,7 +312,7 @@ fun SettingsScreen(
             SettingsCard(
                 title = "Audio Pack",
                 subtitle = "Select the pad sound pack",
-                hazeState = hazeState
+                backdrop = backdrop
             ) {
                 Box(
                     modifier = Modifier
@@ -337,7 +334,7 @@ fun SettingsScreen(
             SettingsCard(
                 title = "Fade In / Crossfade",
                 subtitle = "Duration when starting or switching pads",
-                hazeState = hazeState
+                backdrop = backdrop
             ) {
                 DurationSlider(
                     value = fadeInDuration,
@@ -353,7 +350,7 @@ fun SettingsScreen(
             SettingsCard(
                 title = "Fade Out",
                 subtitle = "Duration when stopping a pad",
-                hazeState = hazeState
+                backdrop = backdrop
             ) {
                 DurationSlider(
                     value = fadeOutDuration,
@@ -369,7 +366,7 @@ fun SettingsScreen(
             SettingsCard(
                 title = "Debug Overlay",
                 subtitle = "Show playback position on main screen",
-                hazeState = hazeState
+                backdrop = backdrop
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -399,7 +396,7 @@ fun SettingsScreen(
             SettingsCard(
                 title = "About",
                 subtitle = "Worship Pads v1.0",
-                hazeState = hazeState
+                backdrop = backdrop
             ) {
                 Text(
                     text = "Ambient pads for worship music.\nAudio: Karl Verkade - Bridge (Ambient Pads III)",
@@ -517,7 +514,7 @@ fun ModeButton(
 fun SettingsCard(
     title: String,
     subtitle: String,
-    hazeState: HazeState? = null,
+    backdrop: Backdrop? = null,
     content: @Composable () -> Unit
 ) {
     val cardShape = RoundedCornerShape(20.dp)
@@ -526,18 +523,26 @@ fun SettingsCard(
             .fillMaxWidth()
             .clip(cardShape)
             .then(
-                if (hazeState != null) {
-                    Modifier.hazeEffect(
-                        state = hazeState,
-                        style = HazeStyle(
-                            backgroundColor = AppColors.glassBackground.copy(alpha = 0.4f),
-                            tints = emptyList(),
-                            blurRadius = 20.dp
-                        )
+                if (backdrop != null) {
+                    Modifier.drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { cardShape },
+                        effects = {
+                            vibrancy()
+                            blur(12f.dp.toPx())
+                            lens(8f.dp.toPx(), 16f.dp.toPx())
+                        },
+                        onDrawSurface = {
+                            drawRect(Color.White.copy(alpha = 0.12f))
+                        }
                     )
                 } else Modifier
             )
-            .background(Color.White.copy(alpha = 0.05f))
+            .then(
+                if (backdrop == null) {
+                    Modifier.background(Color.White.copy(alpha = 0.05f))
+                } else Modifier
+            )
             .padding(20.dp)
     ) {
         Text(

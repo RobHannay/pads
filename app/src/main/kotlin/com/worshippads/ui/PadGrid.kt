@@ -28,16 +28,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.worshippads.audio.MusicalKey
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.hazeEffect
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawBackdrop
 
 @Composable
 fun PadGrid(
     activePad: MusicalKey?,
     onPadClick: (MusicalKey) -> Unit,
     modifier: Modifier = Modifier,
-    hazeState: HazeState? = null
+    backdrop: Backdrop? = null
 ) {
     val keys = MusicalKey.entries
     val configuration = LocalConfiguration.current
@@ -68,7 +67,7 @@ fun PadGrid(
                             isActive = activePad == key,
                             onClick = { onPadClick(key) },
                             modifier = Modifier.weight(1f),
-                            hazeState = hazeState
+                            backdrop = backdrop
                         )
                     }
                 }
@@ -83,7 +82,7 @@ fun PadButton(
     isActive: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    hazeState: HazeState? = null
+    backdrop: Backdrop? = null
 ) {
     val view = LocalView.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -201,38 +200,48 @@ fun PadButton(
                 }
             }
             .clip(buttonShape)
-            // Haze blur effect (real glassmorphism)
+            // Liquid glass effect
             .then(
-                if (hazeState != null) {
-                    Modifier.hazeEffect(
-                        state = hazeState,
-                        style = HazeStyle(
-                            backgroundColor = if (isActive) {
-                                AppColors.accentPrimary.copy(alpha = 0.3f)
-                            } else {
-                                AppColors.glassBackground.copy(alpha = 0.4f)
-                            },
-                            tints = emptyList(),
-                            blurRadius = 20.dp
-                        )
+                if (backdrop != null) {
+                    Modifier.drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { buttonShape },
+                        effects = {
+                            vibrancy()
+                            blur(16f.dp.toPx())
+                            lens(12f.dp.toPx(), 24f.dp.toPx())
+                        },
+                        onDrawSurface = {
+                            drawRect(
+                                color = if (isActive) {
+                                    AppColors.accentPrimary.copy(alpha = 0.35f)
+                                } else {
+                                    Color.White.copy(alpha = 0.15f)
+                                }
+                            )
+                        }
                     )
                 } else Modifier
             )
-            // Glass morphism background overlay
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = if (isActive) {
-                        listOf(
-                            AppColors.accentPrimary.copy(alpha = 0.25f),
-                            AppColors.accentSecondary.copy(alpha = 0.1f)
+            // Glass morphism background overlay (fallback when no backdrop)
+            .then(
+                if (backdrop == null) {
+                    Modifier.background(
+                        brush = Brush.verticalGradient(
+                            colors = if (isActive) {
+                                listOf(
+                                    AppColors.accentPrimary.copy(alpha = 0.25f),
+                                    AppColors.accentSecondary.copy(alpha = 0.1f)
+                                )
+                            } else {
+                                listOf(
+                                    Color.White.copy(alpha = 0.08f),
+                                    Color.White.copy(alpha = 0.02f)
+                                )
+                            }
                         )
-                    } else {
-                        listOf(
-                            Color.White.copy(alpha = 0.08f),
-                            Color.White.copy(alpha = 0.02f)
-                        )
-                    }
-                )
+                    )
+                } else Modifier
             )
             .border(
                 width = 1.dp,

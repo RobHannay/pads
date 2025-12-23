@@ -10,8 +10,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.layerBackdrop
+import com.kyant.backdrop.rememberLayerBackdrop
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -19,9 +20,8 @@ import kotlin.random.Random
 @Composable
 fun AnimatedBackground(
     modifier: Modifier = Modifier,
-    hazeState: HazeState? = null,
     isPlaying: Boolean = true,
-    content: @Composable () -> Unit
+    content: @Composable (Backdrop) -> Unit
 ) {
     // Animate the dim overlay
     val dimAlpha by animateFloatAsState(
@@ -30,15 +30,17 @@ fun AnimatedBackground(
         label = "dimOverlay"
     )
 
+    // Create backdrop for liquid glass effect
+    val backdrop = rememberLayerBackdrop {
+        drawContent()
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         // Animated gradient layer (this is what gets blurred behind glass elements)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(
-                    if (hazeState != null) Modifier.hazeSource(hazeState)
-                    else Modifier
-                )
+                .layerBackdrop(backdrop)
         ) {
             AnimatedGradient()
             FloatingParticles()
@@ -53,8 +55,8 @@ fun AnimatedBackground(
             }
         }
 
-        // Content on top
-        content()
+        // Content on top - pass backdrop for glass effects
+        content(backdrop)
     }
 }
 

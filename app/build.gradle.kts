@@ -62,6 +62,6 @@ dependencies {
     // Media session for background playback
     implementation("androidx.media:media:1.7.0")
 
-    // Glassmorphism blur effect
-    implementation("dev.chrisbanes.haze:haze:1.7.1")
+    // Liquid Glass effect
+    implementation("io.github.kyant0:backdrop:1.0.3")
 }
