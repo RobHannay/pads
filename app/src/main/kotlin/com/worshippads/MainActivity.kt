@@ -1,12 +1,16 @@
 package com.worshippads
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.core.view.WindowCompat
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -41,6 +45,10 @@ import com.worshippads.ui.PadGrid
 class MainActivity : ComponentActivity() {
     private lateinit var audioEngine: AudioEngine
 
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* Permission result - we proceed regardless */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Enable edge-to-edge display
         enableEdgeToEdge(
@@ -52,10 +60,25 @@ class MainActivity : ComponentActivity() {
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
+        // Request notification permission for Android 13+
+        requestNotificationPermission()
+
         audioEngine = AudioEngine(applicationContext)
 
         setContent {
             WorshipPadsApp(audioEngine)
+        }
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
         }
     }
 
