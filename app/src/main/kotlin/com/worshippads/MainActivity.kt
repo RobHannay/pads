@@ -111,6 +111,8 @@ fun WorshipPadsApp(audioEngine: AudioEngine) {
     }
 }
 
+private const val CHARTBUILDER_PACKAGE = "com.multitracks.chartbuilder"
+
 @Composable
 fun MainScreen(
     audioEngine: AudioEngine,
@@ -122,6 +124,12 @@ fun MainScreen(
     val showDebugOverlay by audioEngine.showDebugOverlay.collectAsState()
     val startFromA by audioEngine.startFromA.collectAsState()
     val useFlats by audioEngine.useFlats.collectAsState()
+    val context = LocalContext.current
+
+    // Check if ChartBuilder is installed
+    val chartBuilderIntent = remember {
+        context.packageManager.getLaunchIntentForPackage(CHARTBUILDER_PACKAGE)
+    }
 
     // Playback info state updated periodically
     var playbackInfo by remember { mutableStateOf<PlaybackInfo?>(null) }
@@ -170,8 +178,24 @@ fun MainScreen(
                         isMinor = isMinor,
                         onToggle = { audioEngine.setMinorMode(it) }
                     )
+                    // ChartBuilder button (only if installed)
+                    if (chartBuilderIntent != null) {
+                        IconButton(
+                            onClick = { context.startActivity(chartBuilderIntent) },
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(AppColors.glassBackground)
+                        ) {
+                            Text(
+                                text = "CB",
+                                color = AppColors.textSecondary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                     // Volume button
-                    val context = LocalContext.current
                     IconButton(
                         onClick = {
                             val audioManager = context.getSystemService(AudioManager::class.java)
