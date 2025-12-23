@@ -206,39 +206,51 @@ fun MainScreen(
                         }
                     }
                     // Volume button
-                    IconButton(
-                        onClick = {
-                            val audioManager = context.getSystemService(AudioManager::class.java)
-                            audioManager?.adjustStreamVolume(
-                                AudioManager.STREAM_MUSIC,
-                                AudioManager.ADJUST_SAME,
-                                AudioManager.FLAG_SHOW_UI
-                            )
-                        },
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(AppColors.glassBackground)
+                    TooltipBox(
+                        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                        tooltip = { PlainTooltip { Text("Open volume slider") } },
+                        state = rememberTooltipState()
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = "Volume",
-                            tint = AppColors.textSecondary
-                        )
+                        IconButton(
+                            onClick = {
+                                val audioManager = context.getSystemService(AudioManager::class.java)
+                                audioManager?.adjustStreamVolume(
+                                    AudioManager.STREAM_MUSIC,
+                                    AudioManager.ADJUST_SAME,
+                                    AudioManager.FLAG_SHOW_UI
+                                )
+                            },
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(AppColors.glassBackground)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = "Open volume slider",
+                                tint = AppColors.textSecondary
+                            )
+                        }
                     }
                     // Settings button
-                    IconButton(
-                        onClick = onSettingsClick,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(AppColors.glassBackground)
+                    TooltipBox(
+                        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                        tooltip = { PlainTooltip { Text("Settings") } },
+                        state = rememberTooltipState()
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = AppColors.textSecondary
-                        )
+                        IconButton(
+                            onClick = onSettingsClick,
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(AppColors.glassBackground)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = AppColors.textSecondary
+                            )
+                        }
                     }
                 }
             }
