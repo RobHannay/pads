@@ -333,7 +333,7 @@ class AudioEngine(private val context: Context) {
             previousDndFilter = notificationManager?.currentInterruptionFilter
         }
 
-        notificationManager?.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
+        notificationManager?.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALARMS)
     }
 
     private fun restoreDoNotDisturb() {
