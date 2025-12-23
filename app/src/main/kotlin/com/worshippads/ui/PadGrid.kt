@@ -212,6 +212,7 @@ fun PadButton(
                             } else {
                                 AppColors.glassBackground.copy(alpha = 0.4f)
                             },
+                            tints = emptyList(),
                             blurRadius = 20.dp
                         )
                     )

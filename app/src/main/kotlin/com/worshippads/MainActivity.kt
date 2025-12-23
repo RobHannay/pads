@@ -520,6 +520,7 @@ fun SettingsCard(
                         state = hazeState,
                         style = HazeStyle(
                             backgroundColor = AppColors.glassBackground.copy(alpha = 0.4f),
+                            tints = emptyList(),
                             blurRadius = 20.dp
                         )
                     )
