@@ -13,6 +13,9 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -33,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
@@ -277,6 +281,7 @@ fun MainScreen(
             DebugOverlay(
                 playbackInfo = playbackInfo!!,
                 onSeek = { audioEngine.seekTo(it) },
+                onDismiss = { audioEngine.setShowDebugOverlay(false) },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
@@ -287,14 +292,31 @@ fun MainScreen(
 fun DebugOverlay(
     playbackInfo: PlaybackInfo,
     onSeek: (Int) -> Unit,
+    onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubPosition by remember { mutableFloatStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
+    val dismissThreshold = 100f
 
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .offset { IntOffset(0, offsetY.toInt()) }
+            .draggable(
+                orientation = Orientation.Vertical,
+                state = rememberDraggableState { delta ->
+                    // Only allow dragging down
+                    offsetY = (offsetY + delta).coerceAtLeast(0f)
+                },
+                onDragStopped = {
+                    if (offsetY > dismissThreshold) {
+                        onDismiss()
+                    }
+                    offsetY = 0f
+                }
+            )
             .padding(horizontal = 20.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(AppColors.glassBackground)
