@@ -10,13 +10,16 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
     private var volume = 0f
     @Volatile
     private var isPrepared = false
+    @Volatile
+    private var currentIsMinor = false
 
-    fun start() {
+    fun start(isMinor: Boolean = false) {
         if (mediaPlayer != null) return
 
+        currentIsMinor = isMinor
         try {
             val resourceId = context.resources.getIdentifier(
-                key.resourceName, "raw", context.packageName
+                key.getResourceName(isMinor), "raw", context.packageName
             )
             if (resourceId == 0) {
                 Log.e("PadPlayer", "Resource not found for ${key.noteName}")
@@ -86,17 +89,19 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
     fun isActive(): Boolean = mediaPlayer != null && isPrepared
 }
 
-enum class MusicalKey(val noteName: String, val resourceName: String) {
-    C("C", "c"),
-    C_SHARP("C#", "c_sharp"),
-    D("D", "d"),
-    D_SHARP("D#", "d_sharp"),
-    E("E", "e"),
-    F("F", "f"),
-    F_SHARP("F#", "f_sharp"),
-    G("G", "g"),
-    G_SHARP("G#", "g_sharp"),
-    A("A", "a"),
-    A_SHARP("A#", "a_sharp"),
-    B("B", "b")
+enum class MusicalKey(val noteName: String, val majorResource: String, val minorResource: String) {
+    C("C", "c", "c_minor"),
+    C_SHARP("C#", "c_sharp", "c_sharp_minor"),
+    D("D", "d", "d_minor"),
+    D_SHARP("D#", "d_sharp", "d_sharp_minor"),
+    E("E", "e", "e_minor"),
+    F("F", "f", "f_minor"),
+    F_SHARP("F#", "f_sharp", "f_sharp_minor"),
+    G("G", "g", "g_minor"),
+    G_SHARP("G#", "g_sharp", "g_sharp_minor"),
+    A("A", "a", "a_minor"),
+    A_SHARP("A#", "a_sharp", "a_sharp_minor"),
+    B("B", "b", "b_minor");
+
+    fun getResourceName(isMinor: Boolean): String = if (isMinor) minorResource else majorResource
 }

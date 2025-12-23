@@ -97,6 +97,7 @@ fun MainScreen(
     onSettingsClick: () -> Unit
 ) {
     val activePad by audioEngine.activePad.collectAsState()
+    val isMinor by audioEngine.isMinor.collectAsState()
 
     Box(
         modifier = Modifier
@@ -119,18 +120,29 @@ fun MainScreen(
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
-                IconButton(
-                    onClick = onSettingsClick,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF1C1C1E))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = Color.White
+                    // Minor toggle
+                    ModeToggle(
+                        isMinor = isMinor,
+                        onToggle = { audioEngine.setMinorMode(it) }
                     )
+                    // Settings button
+                    IconButton(
+                        onClick = onSettingsClick,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF1C1C1E))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = Color.White
+                        )
+                    }
                 }
             }
 
@@ -253,6 +265,54 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun ModeToggle(
+    isMinor: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(22.dp))
+            .background(Color(0xFF1C1C1E))
+            .padding(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        ModeButton(
+            text = "Maj",
+            isSelected = !isMinor,
+            onClick = { onToggle(false) }
+        )
+        ModeButton(
+            text = "Min",
+            isSelected = isMinor,
+            onClick = { onToggle(true) }
+        )
+    }
+}
+
+@Composable
+fun ModeButton(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(if (isSelected) Color(0xFF4CAF50) else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = if (isSelected) Color.Black else Color.White,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 

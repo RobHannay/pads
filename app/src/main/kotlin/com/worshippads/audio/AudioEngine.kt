@@ -9,9 +9,14 @@ import kotlin.coroutines.coroutineContext
 import kotlin.math.max
 
 class AudioEngine(context: Context) {
-    private val players = mutableMapOf<MusicalKey, PadPlayer>()
+    private val majorPlayers = mutableMapOf<MusicalKey, PadPlayer>()
+    private val minorPlayers = mutableMapOf<MusicalKey, PadPlayer>()
+
     private val _activePad = MutableStateFlow<MusicalKey?>(null)
     val activePad: StateFlow<MusicalKey?> = _activePad.asStateFlow()
+
+    private val _isMinor = MutableStateFlow(false)
+    val isMinor: StateFlow<Boolean> = _isMinor.asStateFlow()
 
     private val prefs = context.getSharedPreferences("worship_pads_prefs", Context.MODE_PRIVATE)
     private val _fadeDurationMs = MutableStateFlow(prefs.getLong(KEY_FADE_DURATION, 2000L))
@@ -21,9 +26,12 @@ class AudioEngine(context: Context) {
 
     init {
         MusicalKey.entries.forEach { key ->
-            players[key] = PadPlayer(context, key)
+            majorPlayers[key] = PadPlayer(context, key)
+            minorPlayers[key] = PadPlayer(context, key)
         }
     }
+
+    private fun getPlayers(minor: Boolean) = if (minor) minorPlayers else majorPlayers
 
     fun setFadeDuration(durationSeconds: Float) {
         val durationMs = (durationSeconds * 1000).toLong()
@@ -33,36 +41,48 @@ class AudioEngine(context: Context) {
 
     fun getFadeDuration(): Float = _fadeDurationMs.value / 1000f
 
-    companion object {
-        private const val KEY_FADE_DURATION = "fade_duration_ms"
+    fun setMinorMode(minor: Boolean) {
+        if (_isMinor.value == minor) return
+
+        val currentPad = _activePad.value
+        val wasMinor = _isMinor.value
+        _isMinor.value = minor
+
+        // If a pad is playing, crossfade to the same key in the new mode
+        if (currentPad != null) {
+            currentFadeJob?.cancel()
+            currentFadeJob = scope.launch {
+                crossfadeMode(currentPad, wasMinor, minor)
+            }
+        }
     }
 
     fun togglePad(key: MusicalKey) {
         val currentPad = _activePad.value
+        val minor = _isMinor.value
 
-        // Cancel any ongoing fade
         currentFadeJob?.cancel()
 
         if (currentPad == key) {
             _activePad.value = null
             currentFadeJob = scope.launch {
-                fadeOut(key)
+                fadeOut(key, minor)
             }
         } else {
             _activePad.value = key
             currentFadeJob = scope.launch {
                 if (currentPad != null) {
-                    crossfade(currentPad, key)
+                    crossfade(currentPad, key, minor)
                 } else {
-                    fadeIn(key)
+                    fadeIn(key, minor)
                 }
             }
         }
     }
 
-    private suspend fun fadeIn(key: MusicalKey) {
-        val player = players[key] ?: return
-        player.start()
+    private suspend fun fadeIn(key: MusicalKey, minor: Boolean) {
+        val player = getPlayers(minor)[key] ?: return
+        player.start(minor)
 
         val fadeDurationMs = _fadeDurationMs.value
         val steps = max(1, fadeDurationMs / 16)
@@ -77,8 +97,8 @@ class AudioEngine(context: Context) {
         player.setVolume(1f)
     }
 
-    private suspend fun fadeOut(key: MusicalKey) {
-        val player = players[key] ?: return
+    private suspend fun fadeOut(key: MusicalKey, minor: Boolean) {
+        val player = getPlayers(minor)[key] ?: return
 
         val fadeDurationMs = _fadeDurationMs.value
         val steps = max(1, fadeDurationMs / 16)
@@ -94,11 +114,33 @@ class AudioEngine(context: Context) {
         player.stop()
     }
 
-    private suspend fun crossfade(fromKey: MusicalKey, toKey: MusicalKey) {
+    private suspend fun crossfade(fromKey: MusicalKey, toKey: MusicalKey, minor: Boolean) {
+        val players = getPlayers(minor)
         val fromPlayer = players[fromKey] ?: return
         val toPlayer = players[toKey] ?: return
 
-        toPlayer.start()
+        toPlayer.start(minor)
+
+        val fadeDurationMs = _fadeDurationMs.value
+        val steps = max(1, fadeDurationMs / 16)
+
+        repeat(steps.toInt()) {
+            if (!coroutineContext.isActive) return
+            val progress = (it + 1).toFloat() / steps
+            fromPlayer.setVolume((1f - progress).coerceAtLeast(0f))
+            toPlayer.setVolume(progress.coerceAtMost(1f))
+            delay(16)
+        }
+
+        fromPlayer.stop()
+        toPlayer.setVolume(1f)
+    }
+
+    private suspend fun crossfadeMode(key: MusicalKey, fromMinor: Boolean, toMinor: Boolean) {
+        val fromPlayer = getPlayers(fromMinor)[key] ?: return
+        val toPlayer = getPlayers(toMinor)[key] ?: return
+
+        toPlayer.start(toMinor)
 
         val fadeDurationMs = _fadeDurationMs.value
         val steps = max(1, fadeDurationMs / 16)
@@ -116,16 +158,23 @@ class AudioEngine(context: Context) {
     }
 
     fun pause() {
-        players.values.forEach { it.pause() }
+        majorPlayers.values.forEach { it.pause() }
+        minorPlayers.values.forEach { it.pause() }
     }
 
     fun resume() {
-        players.values.forEach { it.resume() }
+        majorPlayers.values.forEach { it.resume() }
+        minorPlayers.values.forEach { it.resume() }
     }
 
     fun cleanup() {
         currentFadeJob?.cancel()
         scope.cancel()
-        players.values.forEach { it.stop() }
+        majorPlayers.values.forEach { it.stop() }
+        minorPlayers.values.forEach { it.stop() }
+    }
+
+    companion object {
+        private const val KEY_FADE_DURATION = "fade_duration_ms"
     }
 }
