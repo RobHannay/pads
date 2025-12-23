@@ -147,7 +147,7 @@ private fun AnimatedGradient() {
 
 @Composable
 private fun FloatingParticles() {
-    val particles = remember { List(25) { Particle() } }
+    val particles = remember { List(50) { Particle() } }
 
     val infiniteTransition = rememberInfiniteTransition(label = "particles")
 
@@ -155,7 +155,7 @@ private fun FloatingParticles() {
         initialValue = 0f,
         targetValue = 1000f,
         animationSpec = infiniteRepeatable(
-            animation = tween(100000, easing = LinearEasing),
+            animation = tween(40000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "time"
@@ -170,9 +170,9 @@ private fun FloatingParticles() {
             val baseX = (particle.startX * width + time * particle.speedX * 0.5f) % width
             val baseY = (particle.startY * height + time * particle.speedY * 0.3f) % height
 
-            // Add gentle sine wave motion
-            val waveX = sin((time * particle.waveSpeed + particle.phase) * 0.01f) * 30f
-            val waveY = cos((time * particle.waveSpeed + particle.phase) * 0.008f) * 20f
+            // Add more pronounced sine wave motion
+            val waveX = sin((time * particle.waveSpeed + particle.phase) * 0.015f) * 50f
+            val waveY = cos((time * particle.waveSpeed + particle.phase) * 0.012f) * 35f
 
             val x = (baseX + waveX).mod(width)
             val y = (baseY + waveY).mod(height)
@@ -204,12 +204,12 @@ private fun FloatingParticles() {
 private data class Particle(
     val startX: Float = Random.nextFloat(),
     val startY: Float = Random.nextFloat(),
-    val speedX: Float = Random.nextFloat() * 0.5f - 0.25f,
-    val speedY: Float = Random.nextFloat() * -0.3f - 0.1f, // Mostly upward
-    val size: Float = Random.nextFloat() * 3f + 1f,
-    val baseAlpha: Float = Random.nextFloat() * 0.4f + 0.1f,
+    val speedX: Float = Random.nextFloat() * 1.2f - 0.6f,
+    val speedY: Float = Random.nextFloat() * -0.8f - 0.3f, // Mostly upward, faster
+    val size: Float = Random.nextFloat() * 5f + 2f, // Larger particles
+    val baseAlpha: Float = Random.nextFloat() * 0.5f + 0.2f, // Brighter
     val phase: Float = Random.nextFloat() * 100f,
-    val waveSpeed: Float = Random.nextFloat() * 2f + 0.5f,
+    val waveSpeed: Float = Random.nextFloat() * 3f + 1f, // More wave motion
     val color: Color = listOf(
         Color(0xFFf093fb), // Pink
         Color(0xFFf5576c), // Coral
