@@ -21,6 +21,8 @@ class AudioEngine(context: Context) {
     private val prefs = context.getSharedPreferences("worship_pads_prefs", Context.MODE_PRIVATE)
     private val _fadeInDurationMs = MutableStateFlow(prefs.getLong(KEY_FADE_IN_DURATION, 2000L))
     private val _fadeOutDurationMs = MutableStateFlow(prefs.getLong(KEY_FADE_OUT_DURATION, 2000L))
+    private val _showDebugOverlay = MutableStateFlow(prefs.getBoolean(KEY_SHOW_DEBUG, false))
+    val showDebugOverlay: StateFlow<Boolean> = _showDebugOverlay.asStateFlow()
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var currentFadeJob: Job? = null
@@ -49,6 +51,23 @@ class AudioEngine(context: Context) {
     }
 
     fun getFadeOutDuration(): Float = _fadeOutDurationMs.value / 1000f
+
+    fun setShowDebugOverlay(show: Boolean) {
+        _showDebugOverlay.value = show
+        prefs.edit().putBoolean(KEY_SHOW_DEBUG, show).apply()
+    }
+
+    fun getPlaybackInfo(): PlaybackInfo? {
+        val activePad = _activePad.value ?: return null
+        val minor = _isMinor.value
+        val player = getPlayers(minor)[activePad] ?: return null
+        if (!player.isActive()) return null
+
+        return PlaybackInfo(
+            currentPosition = player.getCurrentPosition(),
+            duration = player.getDuration()
+        )
+    }
 
     fun setMinorMode(minor: Boolean) {
         if (_isMinor.value == minor) return
@@ -188,5 +207,20 @@ class AudioEngine(context: Context) {
     companion object {
         private const val KEY_FADE_IN_DURATION = "fade_in_duration_ms"
         private const val KEY_FADE_OUT_DURATION = "fade_out_duration_ms"
+        private const val KEY_SHOW_DEBUG = "show_debug_overlay"
+    }
+}
+
+data class PlaybackInfo(
+    val currentPosition: Int,
+    val duration: Int
+) {
+    val remaining: Int get() = (duration - currentPosition).coerceAtLeast(0)
+
+    fun formatTime(ms: Int): String {
+        val totalSeconds = ms / 1000
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return "%d:%02d".format(minutes, seconds)
     }
 }

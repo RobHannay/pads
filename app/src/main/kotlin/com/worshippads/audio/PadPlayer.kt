@@ -87,6 +87,10 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
     }
 
     fun isActive(): Boolean = mediaPlayer != null && isPrepared
+
+    fun getCurrentPosition(): Int = if (isPrepared) mediaPlayer?.currentPosition ?: 0 else 0
+
+    fun getDuration(): Int = if (isPrepared) mediaPlayer?.duration ?: 0 else 0
 }
 
 enum class MusicalKey(val noteName: String, val majorResource: String, val minorResource: String) {

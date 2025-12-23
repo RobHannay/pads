@@ -7,7 +7,9 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -26,6 +28,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.worshippads.audio.AudioEngine
+import com.worshippads.audio.PlaybackInfo
 import com.worshippads.ui.PadGrid
 
 class MainActivity : ComponentActivity() {
@@ -98,6 +101,22 @@ fun MainScreen(
 ) {
     val activePad by audioEngine.activePad.collectAsState()
     val isMinor by audioEngine.isMinor.collectAsState()
+    val showDebugOverlay by audioEngine.showDebugOverlay.collectAsState()
+
+    // Playback info state updated periodically
+    var playbackInfo by remember { mutableStateOf<PlaybackInfo?>(null) }
+
+    // Update playback info every 100ms when debug overlay is shown
+    LaunchedEffect(showDebugOverlay, activePad) {
+        if (showDebugOverlay && activePad != null) {
+            while (true) {
+                playbackInfo = audioEngine.getPlaybackInfo()
+                delay(100)
+            }
+        } else {
+            playbackInfo = null
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -158,6 +177,69 @@ fun MainScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+
+        // Debug overlay
+        if (showDebugOverlay && playbackInfo != null) {
+            DebugOverlay(
+                playbackInfo = playbackInfo!!,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
+    }
+}
+
+@Composable
+fun DebugOverlay(
+    playbackInfo: PlaybackInfo,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF1C1C1E).copy(alpha = 0.9f))
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Position",
+                color = Color.Gray,
+                fontSize = 10.sp
+            )
+            Text(
+                text = playbackInfo.formatTime(playbackInfo.currentPosition),
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Duration",
+                color = Color.Gray,
+                fontSize = 10.sp
+            )
+            Text(
+                text = playbackInfo.formatTime(playbackInfo.duration),
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Remaining",
+                color = Color.Gray,
+                fontSize = 10.sp
+            )
+            Text(
+                text = playbackInfo.formatTime(playbackInfo.remaining),
+                color = Color(0xFF4CAF50),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
@@ -168,6 +250,7 @@ fun SettingsScreen(
 ) {
     var fadeInDuration by remember { mutableFloatStateOf(audioEngine.getFadeInDuration()) }
     var fadeOutDuration by remember { mutableFloatStateOf(audioEngine.getFadeOutDuration()) }
+    val showDebugOverlay by audioEngine.showDebugOverlay.collectAsState()
 
     Box(
         modifier = Modifier
@@ -233,6 +316,35 @@ fun SettingsScreen(
                         audioEngine.setFadeOutDuration(it)
                     }
                 )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            SettingsCard(
+                title = "Debug Overlay",
+                subtitle = "Show playback position on main screen"
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (showDebugOverlay) "Enabled" else "Disabled",
+                        color = Color.White,
+                        fontSize = 16.sp
+                    )
+                    Switch(
+                        checked = showDebugOverlay,
+                        onCheckedChange = { audioEngine.setShowDebugOverlay(it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color(0xFF4CAF50),
+                            checkedTrackColor = Color(0xFF4CAF50).copy(alpha = 0.5f),
+                            uncheckedThumbColor = Color.Gray,
+                            uncheckedTrackColor = Color(0xFF3C3C3E)
+                        )
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
