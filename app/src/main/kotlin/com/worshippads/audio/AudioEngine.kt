@@ -1,5 +1,6 @@
 package com.worshippads.audio
 
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -13,6 +14,7 @@ import kotlin.math.max
 class AudioEngine(private val context: Context) {
     private val majorPlayers = mutableMapOf<MusicalKey, PadPlayer>()
     private val minorPlayers = mutableMapOf<MusicalKey, PadPlayer>()
+    private val notificationManager = context.getSystemService(NotificationManager::class.java)
 
     private val _activePad = MutableStateFlow<MusicalKey?>(null)
     val activePad: StateFlow<MusicalKey?> = _activePad.asStateFlow()
@@ -24,6 +26,11 @@ class AudioEngine(private val context: Context) {
     val audioPack: StateFlow<AudioPack> = _audioPack.asStateFlow()
 
     private val prefs = context.getSharedPreferences("worship_pads_prefs", Context.MODE_PRIVATE)
+
+    // Do Not Disturb
+    private val _enableDnd = MutableStateFlow(prefs.getBoolean(KEY_ENABLE_DND, false))
+    val enableDnd: StateFlow<Boolean> = _enableDnd.asStateFlow()
+    private var previousDndFilter: Int? = null
     private val _fadeInDurationMs = MutableStateFlow(prefs.getLong(KEY_FADE_IN_DURATION, 2000L))
     private val _fadeOutDurationMs = MutableStateFlow(prefs.getLong(KEY_FADE_OUT_DURATION, 2000L))
     private val _showDebugOverlay = MutableStateFlow(prefs.getBoolean(KEY_SHOW_DEBUG, false))
@@ -183,6 +190,7 @@ class AudioEngine(private val context: Context) {
             currentFadeJob = scope.launch {
                 fadeOut(key, minor)
                 stopForegroundService()
+                restoreDoNotDisturb()
             }
         } else {
             // Starting or switching to new pad
@@ -193,6 +201,7 @@ class AudioEngine(private val context: Context) {
                 keepMinorKeys = if (minor) keep else emptySet()
             )
             startForegroundService(key, minor)
+            enableDoNotDisturb()
             currentFadeJob = scope.launch {
                 if (currentPad != null) {
                     crossfade(currentPad, key, minor)
@@ -307,12 +316,43 @@ class AudioEngine(private val context: Context) {
         minorPlayers.values.forEach { it.cleanup() }
     }
 
+    fun setEnableDnd(enable: Boolean) {
+        _enableDnd.value = enable
+        prefs.edit().putBoolean(KEY_ENABLE_DND, enable).apply()
+    }
+
+    fun isDndAccessGranted(): Boolean {
+        return notificationManager?.isNotificationPolicyAccessGranted == true
+    }
+
+    private fun enableDoNotDisturb() {
+        if (!_enableDnd.value || !isDndAccessGranted()) return
+
+        // Store previous state only if we haven't already (avoid overwriting during crossfades)
+        if (previousDndFilter == null) {
+            previousDndFilter = notificationManager?.currentInterruptionFilter
+        }
+
+        notificationManager?.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
+    }
+
+    private fun restoreDoNotDisturb() {
+        if (!isDndAccessGranted()) return
+
+        val previous = previousDndFilter
+        if (previous != null) {
+            notificationManager?.setInterruptionFilter(previous)
+            previousDndFilter = null
+        }
+    }
+
     companion object {
         private const val KEY_FADE_IN_DURATION = "fade_in_duration_ms"
         private const val KEY_FADE_OUT_DURATION = "fade_out_duration_ms"
         private const val KEY_SHOW_DEBUG = "show_debug_overlay"
         private const val KEY_START_FROM_A = "start_from_a"
         private const val KEY_USE_FLATS = "use_flats"
+        private const val KEY_ENABLE_DND = "enable_dnd"
     }
 }
 

@@ -1,7 +1,9 @@
 package com.worshippads
 
+import android.content.Intent
 import android.media.AudioManager
 import android.os.Bundle
+import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -340,6 +342,8 @@ fun SettingsScreen(
     val startFromA by audioEngine.startFromA.collectAsState()
     val useFlats by audioEngine.useFlats.collectAsState()
     val currentPack by audioEngine.audioPack.collectAsState()
+    val enableDnd by audioEngine.enableDnd.collectAsState()
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -498,6 +502,61 @@ fun SettingsScreen(
                         audioEngine.setFadeOutDuration(it)
                     }
                 )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            SettingsCard(
+                title = "Do Not Disturb",
+                subtitle = "Automatically enable DND while playing",
+                backdrop = backdrop
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (enableDnd) "Enabled" else "Disabled",
+                            color = AppColors.textPrimary,
+                            fontSize = 16.sp
+                        )
+                        if (enableDnd && !audioEngine.isDndAccessGranted()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Permission required",
+                                color = AppColors.accentPrimary,
+                                fontSize = 12.sp,
+                                modifier = Modifier.clickable {
+                                    context.startActivity(
+                                        Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+                                    )
+                                }
+                            )
+                        }
+                    }
+                    Switch(
+                        checked = enableDnd,
+                        onCheckedChange = { enabled ->
+                            if (enabled && !audioEngine.isDndAccessGranted()) {
+                                // Enable the setting and prompt for permission
+                                audioEngine.setEnableDnd(true)
+                                context.startActivity(
+                                    Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+                                )
+                            } else {
+                                audioEngine.setEnableDnd(enabled)
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = AppColors.accentPrimary,
+                            checkedTrackColor = AppColors.accentPrimary.copy(alpha = 0.5f),
+                            uncheckedThumbColor = AppColors.textMuted,
+                            uncheckedTrackColor = AppColors.surfaceLight
+                        )
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
