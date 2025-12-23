@@ -2,6 +2,7 @@ package com.worshippads.ui
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
@@ -19,8 +20,16 @@ import kotlin.random.Random
 fun AnimatedBackground(
     modifier: Modifier = Modifier,
     hazeState: HazeState? = null,
+    isPlaying: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    // Animate the dim overlay
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (isPlaying) 0f else 0.85f,
+        animationSpec = tween(durationMillis = 2000, easing = EaseInOutSine),
+        label = "dimOverlay"
+    )
+
     Box(modifier = modifier.fillMaxSize()) {
         // Animated gradient layer (this is what gets blurred behind glass elements)
         Box(
@@ -33,6 +42,15 @@ fun AnimatedBackground(
         ) {
             AnimatedGradient()
             FloatingParticles()
+
+            // Dim overlay when not playing
+            if (dimAlpha > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = dimAlpha))
+                )
+            }
         }
 
         // Content on top

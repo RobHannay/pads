@@ -73,8 +73,12 @@ class MainActivity : ComponentActivity() {
 fun WorshipPadsApp(audioEngine: AudioEngine) {
     val navController = rememberNavController()
     val hazeState = remember { HazeState() }
+    val activePad by audioEngine.activePad.collectAsState()
 
-    AnimatedBackground(hazeState = hazeState) {
+    AnimatedBackground(
+        hazeState = hazeState,
+        isPlaying = activePad != null
+    ) {
         NavHost(
             navController = navController,
             startDestination = "main",
