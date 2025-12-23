@@ -187,11 +187,11 @@ fun MainScreen(
                                 .clip(CircleShape)
                                 .background(AppColors.glassBackground)
                         ) {
-                            Text(
-                                text = "CB",
-                                color = AppColors.textSecondary,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
+                            Icon(
+                                painter = painterResource(R.drawable.ic_chartbuilder),
+                                contentDescription = "ChartBuilder",
+                                modifier = Modifier.size(24.dp),
+                                tint = Color.Unspecified
                             )
                         }
                     }
