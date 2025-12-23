@@ -1,8 +1,10 @@
 package com.worshippads.audio
 
 import android.app.NotificationManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +17,15 @@ class AudioEngine(private val context: Context) {
     private val majorPlayers = mutableMapOf<MusicalKey, PadPlayer>()
     private val minorPlayers = mutableMapOf<MusicalKey, PadPlayer>()
     private val notificationManager = context.getSystemService(NotificationManager::class.java)
+
+    // Broadcast receiver for stop action from notification
+    private val stopReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == AudioService.ACTION_STOP_PLAYBACK) {
+                stopPlayback()
+            }
+        }
+    }
 
     private val _activePad = MutableStateFlow<MusicalKey?>(null)
     val activePad: StateFlow<MusicalKey?> = _activePad.asStateFlow()
@@ -49,6 +60,21 @@ class AudioEngine(private val context: Context) {
         MusicalKey.entries.forEach { key ->
             majorPlayers[key] = PadPlayer(context, key)
             minorPlayers[key] = PadPlayer(context, key)
+        }
+
+        // Register broadcast receiver for stop action
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(
+                stopReceiver,
+                IntentFilter(AudioService.ACTION_STOP_PLAYBACK),
+                Context.RECEIVER_NOT_EXPORTED
+            )
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            context.registerReceiver(
+                stopReceiver,
+                IntentFilter(AudioService.ACTION_STOP_PLAYBACK)
+            )
         }
     }
 
@@ -314,6 +340,17 @@ class AudioEngine(private val context: Context) {
         stopForegroundService()
         majorPlayers.values.forEach { it.cleanup() }
         minorPlayers.values.forEach { it.cleanup() }
+        try {
+            context.unregisterReceiver(stopReceiver)
+        } catch (_: IllegalArgumentException) {
+            // Receiver not registered
+        }
+    }
+
+    /** Stop playback with fade out (called from notification stop button) */
+    fun stopPlayback() {
+        val currentPad = _activePad.value ?: return
+        togglePad(currentPad) // This triggers fade out
     }
 
     fun setEnableDnd(enable: Boolean) {

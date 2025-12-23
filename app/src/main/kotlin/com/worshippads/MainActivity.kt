@@ -49,10 +49,6 @@ import com.worshippads.ui.AnimatedBackground
 import com.worshippads.ui.AppColors
 import com.worshippads.ui.PadGrid
 import com.kyant.backdrop.backdrops.LayerBackdrop
-import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.colorControls
-import com.kyant.backdrop.effects.lens
 
 class MainActivity : ComponentActivity() {
     private lateinit var audioEngine: AudioEngine
@@ -107,8 +103,7 @@ fun WorshipPadsApp(audioEngine: AudioEngine) {
             composable("settings") {
                 SettingsScreen(
                     audioEngine = audioEngine,
-                    onBack = { navController.popBackStack() },
-                    backdrop = backdrop
+                    onBack = { navController.popBackStack() }
                 )
             }
         }
@@ -402,8 +397,7 @@ fun DebugOverlay(
 @Composable
 fun SettingsScreen(
     audioEngine: AudioEngine,
-    onBack: () -> Unit,
-    backdrop: LayerBackdrop
+    onBack: () -> Unit
 ) {
     var fadeInDuration by remember { mutableFloatStateOf(audioEngine.getFadeInDuration()) }
     var fadeOutDuration by remember { mutableFloatStateOf(audioEngine.getFadeOutDuration()) }
@@ -461,8 +455,7 @@ fun SettingsScreen(
 
             SettingsCard(
                 title = "Audio Pack",
-                subtitle = "Select the pad sound pack",
-                backdrop = backdrop
+                subtitle = "Select the pad sound pack"
             ) {
                 Box(
                     modifier = Modifier
@@ -483,8 +476,7 @@ fun SettingsScreen(
 
             SettingsCard(
                 title = "Grid",
-                subtitle = "Starting key and note names",
-                backdrop = backdrop
+                subtitle = "Starting key and note names"
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -545,8 +537,7 @@ fun SettingsScreen(
 
             SettingsCard(
                 title = "Fade In / Crossfade",
-                subtitle = "Duration when starting or switching pads",
-                backdrop = backdrop
+                subtitle = "Duration when starting or switching pads"
             ) {
                 DurationSlider(
                     value = fadeInDuration,
@@ -561,8 +552,7 @@ fun SettingsScreen(
 
             SettingsCard(
                 title = "Fade Out",
-                subtitle = "Duration when stopping a pad",
-                backdrop = backdrop
+                subtitle = "Duration when stopping a pad"
             ) {
                 DurationSlider(
                     value = fadeOutDuration,
@@ -577,8 +567,7 @@ fun SettingsScreen(
 
             SettingsCard(
                 title = "Do Not Disturb",
-                subtitle = "Automatically enable DND while playing",
-                backdrop = backdrop
+                subtitle = "Automatically enable DND while playing"
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -632,8 +621,7 @@ fun SettingsScreen(
 
             SettingsCard(
                 title = "Debug Overlay",
-                subtitle = "Show playback position on main screen",
-                backdrop = backdrop
+                subtitle = "Show playback position on main screen"
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -662,8 +650,7 @@ fun SettingsScreen(
 
             SettingsCard(
                 title = "About",
-                subtitle = "Worship Pads v1.0",
-                backdrop = backdrop
+                subtitle = "Worship Pads v1.0"
             ) {
                 Text(
                     text = "Ambient pads for worship music.\nAudio: Karl Verkade - Bridge (Ambient Pads III)",
@@ -781,7 +768,6 @@ fun ModeButton(
 fun SettingsCard(
     title: String,
     subtitle: String,
-    backdrop: LayerBackdrop? = null,
     content: @Composable () -> Unit
 ) {
     val cardShape = RoundedCornerShape(20.dp)
@@ -789,24 +775,7 @@ fun SettingsCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(cardShape)
-            .then(
-                if (backdrop != null) {
-                    Modifier.drawBackdrop(
-                        backdrop = backdrop,
-                        shape = { cardShape },
-                        effects = {
-                            colorControls()
-                            blur(12f.dp.toPx())
-                            lens(8f.dp.toPx(), 16f.dp.toPx())
-                        }
-                    )
-                } else Modifier
-            )
-            .then(
-                if (backdrop == null) {
-                    Modifier.background(Color.White.copy(alpha = 0.05f))
-                } else Modifier
-            )
+            .background(Color.White.copy(alpha = 0.05f))
             .padding(20.dp)
     ) {
         Text(

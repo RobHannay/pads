@@ -15,6 +15,7 @@ import android.support.v4.media.session.PlaybackStateCompat
 import androidx.core.app.NotificationCompat
 import androidx.media.app.NotificationCompat.MediaStyle
 import com.worshippads.MainActivity
+import com.worshippads.R
 
 class AudioService : Service() {
     private var mediaSession: MediaSessionCompat? = null
@@ -29,7 +30,15 @@ class AudioService : Service() {
         mediaSession = MediaSessionCompat(this, "WorshipPads").apply {
             setCallback(object : MediaSessionCompat.Callback() {
                 override fun onStop() {
-                    stopSelf()
+                    sendBroadcast(Intent(ACTION_STOP_PLAYBACK).setPackage(packageName))
+                }
+
+                override fun onPause() {
+                    sendBroadcast(Intent(ACTION_STOP_PLAYBACK).setPackage(packageName))
+                }
+
+                override fun onPlay() {
+                    // Already playing, ignore
                 }
             })
             isActive = true
@@ -66,7 +75,12 @@ class AudioService : Service() {
         mediaSession?.setPlaybackState(
             PlaybackStateCompat.Builder()
                 .setState(PlaybackStateCompat.STATE_PLAYING, 0, 1f)
-                .setActions(PlaybackStateCompat.ACTION_STOP)
+                .setActions(
+                    PlaybackStateCompat.ACTION_PLAY or
+                    PlaybackStateCompat.ACTION_PAUSE or
+                    PlaybackStateCompat.ACTION_STOP or
+                    PlaybackStateCompat.ACTION_PLAY_PAUSE
+                )
                 .build()
         )
     }
@@ -106,7 +120,7 @@ class AudioService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("$keyName $modeText")
             .setContentText("Worship Pads")
-            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setSilent(true)
@@ -123,5 +137,6 @@ class AudioService : Service() {
         const val NOTIFICATION_ID = 1
         const val EXTRA_KEY_NAME = "key_name"
         const val EXTRA_IS_MINOR = "is_minor"
+        const val ACTION_STOP_PLAYBACK = "com.worshippads.STOP_PLAYBACK"
     }
 }
