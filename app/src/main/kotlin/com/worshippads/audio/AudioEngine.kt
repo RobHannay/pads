@@ -38,6 +38,18 @@ class AudioEngine(private val context: Context) {
 
     private fun getPlayers(minor: Boolean) = if (minor) minorPlayers else majorPlayers
 
+    // Stop all active players except the specified keys
+    private fun stopOrphanedPlayers(keepKeys: Set<MusicalKey>, keepMinor: Boolean) {
+        majorPlayers.forEach { (k, player) ->
+            val shouldKeep = k in keepKeys && !keepMinor
+            if (!shouldKeep && player.isActive()) player.stop()
+        }
+        minorPlayers.forEach { (k, player) ->
+            val shouldKeep = k in keepKeys && keepMinor
+            if (!shouldKeep && player.isActive()) player.stop()
+        }
+    }
+
     private fun startForegroundService(key: MusicalKey, isMinor: Boolean) {
         val intent = Intent(context, AudioService::class.java).apply {
             putExtra(AudioService.EXTRA_KEY_NAME, key.noteName)
@@ -96,11 +108,23 @@ class AudioEngine(private val context: Context) {
 
         // If a pad is playing, crossfade to the same key in the new mode
         if (currentPad != null) {
-            startForegroundService(currentPad, minor) // Update notification
             currentFadeJob?.cancel()
+            // Stop all orphaned players, but keep the key in both modes for the crossfade
+            stopOrphanedPlayersForModeSwitch(currentPad)
+            startForegroundService(currentPad, minor)
             currentFadeJob = scope.launch {
                 crossfadeMode(currentPad, wasMinor, minor)
             }
+        }
+    }
+
+    // For mode switch, we need to keep the same key in both modes temporarily
+    private fun stopOrphanedPlayersForModeSwitch(keepKey: MusicalKey) {
+        majorPlayers.forEach { (k, player) ->
+            if (k != keepKey && player.isActive()) player.stop()
+        }
+        minorPlayers.forEach { (k, player) ->
+            if (k != keepKey && player.isActive()) player.stop()
         }
     }
 
@@ -111,13 +135,20 @@ class AudioEngine(private val context: Context) {
         currentFadeJob?.cancel()
 
         if (currentPad == key) {
+            // Stopping current pad
             _activePad.value = null
+            // Only keep the current pad (for fadeout), stop all orphans
+            stopOrphanedPlayers(setOf(key), minor)
             currentFadeJob = scope.launch {
                 fadeOut(key, minor)
                 stopForegroundService()
             }
         } else {
+            // Starting or switching to new pad
             _activePad.value = key
+            // Keep currentPad (for crossfade source) and key (target), stop all orphans
+            val keysToKeep = if (currentPad != null) setOf(currentPad, key) else setOf(key)
+            stopOrphanedPlayers(keysToKeep, minor)
             startForegroundService(key, minor)
             currentFadeJob = scope.launch {
                 if (currentPad != null) {
