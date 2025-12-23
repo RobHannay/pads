@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -16,14 +18,22 @@ import kotlin.random.Random
 @Composable
 fun AnimatedBackground(
     modifier: Modifier = Modifier,
+    hazeState: HazeState? = null,
     content: @Composable () -> Unit
 ) {
     Box(modifier = modifier.fillMaxSize()) {
-        // Animated gradient layer
-        AnimatedGradient()
-
-        // Floating particles layer
-        FloatingParticles()
+        // Animated gradient layer (this is what gets blurred behind glass elements)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (hazeState != null) Modifier.hazeSource(hazeState)
+                    else Modifier
+                )
+        ) {
+            AnimatedGradient()
+            FloatingParticles()
+        }
 
         // Content on top
         content()

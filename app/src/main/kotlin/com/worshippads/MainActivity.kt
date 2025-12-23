@@ -1,16 +1,11 @@
 package com.worshippads
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -41,13 +36,12 @@ import com.worshippads.audio.PlaybackInfo
 import com.worshippads.ui.AnimatedBackground
 import com.worshippads.ui.AppColors
 import com.worshippads.ui.PadGrid
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.HazeStyle
 
 class MainActivity : ComponentActivity() {
     private lateinit var audioEngine: AudioEngine
-
-    private val notificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* Permission result - we proceed regardless */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Enable edge-to-edge display
@@ -60,25 +54,10 @@ class MainActivity : ComponentActivity() {
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        // Request notification permission for Android 13+
-        requestNotificationPermission()
-
         audioEngine = AudioEngine(applicationContext)
 
         setContent {
             WorshipPadsApp(audioEngine)
-        }
-    }
-
-    private fun requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
         }
     }
 
@@ -91,8 +70,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun WorshipPadsApp(audioEngine: AudioEngine) {
     val navController = rememberNavController()
+    val hazeState = remember { HazeState() }
 
-    AnimatedBackground {
+    AnimatedBackground(hazeState = hazeState) {
         NavHost(
             navController = navController,
             startDestination = "main",
@@ -104,13 +84,15 @@ fun WorshipPadsApp(audioEngine: AudioEngine) {
             composable("main") {
                 MainScreen(
                     audioEngine = audioEngine,
-                    onSettingsClick = { navController.navigate("settings") }
+                    onSettingsClick = { navController.navigate("settings") },
+                    hazeState = hazeState
                 )
             }
             composable("settings") {
                 SettingsScreen(
                     audioEngine = audioEngine,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    hazeState = hazeState
                 )
             }
         }
@@ -120,7 +102,8 @@ fun WorshipPadsApp(audioEngine: AudioEngine) {
 @Composable
 fun MainScreen(
     audioEngine: AudioEngine,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    hazeState: HazeState
 ) {
     val activePad by audioEngine.activePad.collectAsState()
     val isMinor by audioEngine.isMinor.collectAsState()
@@ -196,7 +179,8 @@ fun MainScreen(
                 onPadClick = { key -> audioEngine.togglePad(key) },
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth()
+                    .fillMaxWidth(),
+                hazeState = hazeState
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -270,7 +254,8 @@ fun DebugOverlay(
 @Composable
 fun SettingsScreen(
     audioEngine: AudioEngine,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    hazeState: HazeState
 ) {
     var fadeInDuration by remember { mutableFloatStateOf(audioEngine.getFadeInDuration()) }
     var fadeOutDuration by remember { mutableFloatStateOf(audioEngine.getFadeOutDuration()) }
@@ -318,7 +303,8 @@ fun SettingsScreen(
 
             SettingsCard(
                 title = "Audio Pack",
-                subtitle = "Select the pad sound pack"
+                subtitle = "Select the pad sound pack",
+                hazeState = hazeState
             ) {
                 Box(
                     modifier = Modifier
@@ -339,7 +325,8 @@ fun SettingsScreen(
 
             SettingsCard(
                 title = "Fade In / Crossfade",
-                subtitle = "Duration when starting or switching pads"
+                subtitle = "Duration when starting or switching pads",
+                hazeState = hazeState
             ) {
                 DurationSlider(
                     value = fadeInDuration,
@@ -354,7 +341,8 @@ fun SettingsScreen(
 
             SettingsCard(
                 title = "Fade Out",
-                subtitle = "Duration when stopping a pad"
+                subtitle = "Duration when stopping a pad",
+                hazeState = hazeState
             ) {
                 DurationSlider(
                     value = fadeOutDuration,
@@ -369,7 +357,8 @@ fun SettingsScreen(
 
             SettingsCard(
                 title = "Debug Overlay",
-                subtitle = "Show playback position on main screen"
+                subtitle = "Show playback position on main screen",
+                hazeState = hazeState
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -398,7 +387,8 @@ fun SettingsScreen(
 
             SettingsCard(
                 title = "About",
-                subtitle = "Worship Pads v1.0"
+                subtitle = "Worship Pads v1.0",
+                hazeState = hazeState
             ) {
                 Text(
                     text = "Ambient pads for worship music.\nAudio: Karl Verkade - Bridge (Ambient Pads III)",
@@ -516,13 +506,26 @@ fun ModeButton(
 fun SettingsCard(
     title: String,
     subtitle: String,
+    hazeState: HazeState? = null,
     content: @Composable () -> Unit
 ) {
+    val cardShape = RoundedCornerShape(20.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(AppColors.glassBackground)
+            .clip(cardShape)
+            .then(
+                if (hazeState != null) {
+                    Modifier.hazeEffect(
+                        state = hazeState,
+                        style = HazeStyle(
+                            backgroundColor = AppColors.glassBackground.copy(alpha = 0.4f),
+                            blurRadius = 20.dp
+                        )
+                    )
+                } else Modifier
+            )
+            .background(Color.White.copy(alpha = 0.05f))
             .padding(20.dp)
     ) {
         Text(

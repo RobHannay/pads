@@ -15,11 +15,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -30,12 +28,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.worshippads.audio.MusicalKey
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.hazeEffect
 
 @Composable
 fun PadGrid(
     activePad: MusicalKey?,
     onPadClick: (MusicalKey) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    hazeState: HazeState? = null
 ) {
     val keys = MusicalKey.entries
     val configuration = LocalConfiguration.current
@@ -65,7 +67,8 @@ fun PadGrid(
                             key = key,
                             isActive = activePad == key,
                             onClick = { onPadClick(key) },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            hazeState = hazeState
                         )
                     }
                 }
@@ -79,7 +82,8 @@ fun PadButton(
     key: MusicalKey,
     isActive: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    hazeState: HazeState? = null
 ) {
     val view = LocalView.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -197,18 +201,34 @@ fun PadButton(
                 }
             }
             .clip(buttonShape)
-            // Glass morphism background
+            // Haze blur effect (real glassmorphism)
+            .then(
+                if (hazeState != null) {
+                    Modifier.hazeEffect(
+                        state = hazeState,
+                        style = HazeStyle(
+                            backgroundColor = if (isActive) {
+                                AppColors.accentPrimary.copy(alpha = 0.3f)
+                            } else {
+                                AppColors.glassBackground.copy(alpha = 0.4f)
+                            },
+                            blurRadius = 20.dp
+                        )
+                    )
+                } else Modifier
+            )
+            // Glass morphism background overlay
             .background(
                 brush = Brush.verticalGradient(
                     colors = if (isActive) {
                         listOf(
-                            AppColors.accentPrimary.copy(alpha = 0.4f),
-                            AppColors.accentSecondary.copy(alpha = 0.2f)
+                            AppColors.accentPrimary.copy(alpha = 0.25f),
+                            AppColors.accentSecondary.copy(alpha = 0.1f)
                         )
                     } else {
                         listOf(
-                            AppColors.glassHighlight,
-                            AppColors.glassBackground
+                            Color.White.copy(alpha = 0.08f),
+                            Color.White.copy(alpha = 0.02f)
                         )
                     }
                 )

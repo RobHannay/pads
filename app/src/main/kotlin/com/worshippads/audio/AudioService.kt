@@ -9,20 +9,38 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
 import androidx.core.app.NotificationCompat
+import androidx.media.app.NotificationCompat.MediaStyle
 import com.worshippads.MainActivity
 
 class AudioService : Service() {
+    private var mediaSession: MediaSessionCompat? = null
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        setupMediaSession()
+    }
+
+    private fun setupMediaSession() {
+        mediaSession = MediaSessionCompat(this, "WorshipPads").apply {
+            setCallback(object : MediaSessionCompat.Callback() {
+                override fun onStop() {
+                    stopSelf()
+                }
+            })
+            isActive = true
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val keyName = intent?.getStringExtra(EXTRA_KEY_NAME) ?: "Playing"
         val isMinor = intent?.getBooleanExtra(EXTRA_IS_MINOR, false) ?: false
 
+        updateMediaSession(keyName, isMinor)
         val notification = createNotification(keyName, isMinor)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -34,15 +52,40 @@ class AudioService : Service() {
         return START_STICKY
     }
 
+    private fun updateMediaSession(keyName: String, isMinor: Boolean) {
+        val modeText = if (isMinor) "Minor" else "Major"
+
+        mediaSession?.setMetadata(
+            MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, "$keyName $modeText")
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, "Worship Pads")
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, "The Bridge")
+                .build()
+        )
+
+        mediaSession?.setPlaybackState(
+            PlaybackStateCompat.Builder()
+                .setState(PlaybackStateCompat.STATE_PLAYING, 0, 1f)
+                .setActions(PlaybackStateCompat.ACTION_STOP)
+                .build()
+        )
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onDestroy() {
+        mediaSession?.isActive = false
+        mediaSession?.release()
+        super.onDestroy()
+    }
 
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Worship Pads Playback",
+            "Media Playback",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Shows when pads are playing"
+            description = "Media playback controls"
             setShowBadge(false)
         }
 
@@ -58,15 +101,20 @@ class AudioService : Service() {
             this, 0, intent, PendingIntent.FLAG_IMMUTABLE
         )
 
-        val modeText = if (isMinor) "minor" else "major"
+        val modeText = if (isMinor) "Minor" else "Major"
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Worship Pads")
-            .setContentText("Playing $keyName $modeText")
+            .setContentTitle("$keyName $modeText")
+            .setContentText("Worship Pads")
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setSilent(true)
+            .setStyle(
+                MediaStyle()
+                    .setMediaSession(mediaSession?.sessionToken)
+            )
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
     }
 
