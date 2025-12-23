@@ -31,8 +31,8 @@ import com.worshippads.audio.MusicalKey
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.colorControls
 import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.vibrancy
 
 @Composable
 fun PadGrid(
@@ -210,18 +210,14 @@ fun PadButton(
                         backdrop = backdrop,
                         shape = { buttonShape },
                         effects = {
-                            vibrancy()
+                            colorControls()
                             blur(16f.dp.toPx())
                             lens(12f.dp.toPx(), 24f.dp.toPx())
                         },
                         onDrawSurface = {
-                            drawRect(
-                                color = if (isActive) {
-                                    AppColors.accentPrimary.copy(alpha = 0.35f)
-                                } else {
-                                    Color.White.copy(alpha = 0.15f)
-                                }
-                            )
+                            if (isActive) {
+                                drawRect(AppColors.accentPrimary.copy(alpha = 0.2f))
+                            }
                         }
                     )
                 } else Modifier
@@ -258,22 +254,6 @@ fun PadButton(
             ),
         contentAlignment = Alignment.Center
     ) {
-        // Subtle inner highlight at top
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = if (isActive) 0.15f else 0.05f),
-                            Color.Transparent
-                        ),
-                        startY = 0f,
-                        endY = 100f
-                    )
-                )
-        )
-
         Text(
             text = key.noteName,
             color = textColor,

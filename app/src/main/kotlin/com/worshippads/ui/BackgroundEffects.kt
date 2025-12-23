@@ -31,7 +31,9 @@ fun AnimatedBackground(
     )
 
     // Create backdrop for liquid glass effect
+    // Must draw background first to prevent transparency artifacts
     val backdrop = rememberLayerBackdrop {
+        drawRect(Color(0xFF0a0a15)) // Dark background color
         drawContent()
     }
 

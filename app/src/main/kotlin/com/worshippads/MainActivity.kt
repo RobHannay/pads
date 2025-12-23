@@ -41,8 +41,8 @@ import com.worshippads.ui.PadGrid
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.colorControls
 import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.vibrancy
 
 class MainActivity : ComponentActivity() {
     private lateinit var audioEngine: AudioEngine
@@ -133,6 +133,7 @@ fun MainScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .displayCutoutPadding()
             .systemBarsPadding()
             .padding(20.dp)
     ) {
@@ -271,6 +272,7 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .displayCutoutPadding()
             .systemBarsPadding()
             .padding(20.dp)
     ) {
@@ -531,12 +533,9 @@ fun SettingsCard(
                         backdrop = backdrop,
                         shape = { cardShape },
                         effects = {
-                            vibrancy()
+                            colorControls()
                             blur(12f.dp.toPx())
                             lens(8f.dp.toPx(), 16f.dp.toPx())
-                        },
-                        onDrawSurface = {
-                            drawRect(Color.White.copy(alpha = 0.12f))
                         }
                     )
                 } else Modifier
