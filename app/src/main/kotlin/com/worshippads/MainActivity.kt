@@ -180,19 +180,29 @@ fun MainScreen(
                     )
                     // ChartBuilder button (only if installed)
                     if (chartBuilderIntent != null) {
-                        IconButton(
-                            onClick = { context.startActivity(chartBuilderIntent) },
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(AppColors.glassBackground)
+                        TooltipBox(
+                            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                            tooltip = {
+                                PlainTooltip {
+                                    Text("Open ChartBuilder")
+                                }
+                            },
+                            state = rememberTooltipState()
                         ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_chartbuilder),
-                                contentDescription = "ChartBuilder",
-                                modifier = Modifier.size(24.dp),
-                                tint = Color.Unspecified
-                            )
+                            IconButton(
+                                onClick = { context.startActivity(chartBuilderIntent) },
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(AppColors.glassBackground)
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_chartbuilder),
+                                    contentDescription = "Open ChartBuilder",
+                                    modifier = Modifier.size(24.dp),
+                                    tint = Color.Unspecified
+                                )
+                            }
                         }
                     }
                     // Volume button
