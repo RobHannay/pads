@@ -31,7 +31,9 @@ import androidx.navigation.compose.rememberNavController
 import com.worshippads.audio.AudioEngine
 import com.worshippads.audio.AudioPack
 import com.worshippads.audio.PlaybackInfo
+import com.worshippads.ui.AnimatedBackground
 import com.worshippads.ui.AppColors
+import com.worshippads.ui.AudioVisualizer
 import com.worshippads.ui.PadGrid
 
 class MainActivity : ComponentActivity() {
@@ -69,11 +71,7 @@ class MainActivity : ComponentActivity() {
 fun WorshipPadsApp(audioEngine: AudioEngine) {
     val navController = rememberNavController()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppColors.backgroundGradient)
-    ) {
+    AnimatedBackground {
         NavHost(
             navController = navController,
             startDestination = "main",
@@ -97,9 +95,6 @@ fun WorshipPadsApp(audioEngine: AudioEngine) {
         }
     }
 }
-
-// Shared gradient background modifier
-fun Modifier.gradientBackground() = this.background(AppColors.backgroundGradient)
 
 @Composable
 fun MainScreen(
@@ -182,14 +177,24 @@ fun MainScreen(
                     .fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Audio visualizer at bottom
+            AudioVisualizer(
+                isPlaying = activePad != null,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         // Debug overlay
         if (showDebugOverlay && playbackInfo != null) {
             DebugOverlay(
                 playbackInfo = playbackInfo!!,
-                modifier = Modifier.align(Alignment.BottomCenter)
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 70.dp) // Above visualizer
             )
         }
     }
