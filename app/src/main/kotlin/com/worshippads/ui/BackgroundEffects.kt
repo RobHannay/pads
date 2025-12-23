@@ -10,9 +10,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import com.kyant.backdrop.Backdrop
-import com.kyant.backdrop.layerBackdrop
-import com.kyant.backdrop.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.LayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -21,7 +21,7 @@ import kotlin.random.Random
 fun AnimatedBackground(
     modifier: Modifier = Modifier,
     isPlaying: Boolean = true,
-    content: @Composable (Backdrop) -> Unit
+    content: @Composable (LayerBackdrop) -> Unit
 ) {
     // Animate the dim overlay
     val dimAlpha by animateFloatAsState(

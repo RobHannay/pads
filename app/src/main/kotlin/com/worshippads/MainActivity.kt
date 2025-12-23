@@ -38,8 +38,11 @@ import com.worshippads.audio.PlaybackInfo
 import com.worshippads.ui.AnimatedBackground
 import com.worshippads.ui.AppColors
 import com.worshippads.ui.PadGrid
-import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
 
 class MainActivity : ComponentActivity() {
     private lateinit var audioEngine: AudioEngine
@@ -106,7 +109,7 @@ fun WorshipPadsApp(audioEngine: AudioEngine) {
 fun MainScreen(
     audioEngine: AudioEngine,
     onSettingsClick: () -> Unit,
-    backdrop: Backdrop
+    backdrop: LayerBackdrop
 ) {
     val activePad by audioEngine.activePad.collectAsState()
     val isMinor by audioEngine.isMinor.collectAsState()
@@ -258,7 +261,7 @@ fun DebugOverlay(
 fun SettingsScreen(
     audioEngine: AudioEngine,
     onBack: () -> Unit,
-    backdrop: Backdrop
+    backdrop: LayerBackdrop
 ) {
     var fadeInDuration by remember { mutableFloatStateOf(audioEngine.getFadeInDuration()) }
     var fadeOutDuration by remember { mutableFloatStateOf(audioEngine.getFadeOutDuration()) }
@@ -514,7 +517,7 @@ fun ModeButton(
 fun SettingsCard(
     title: String,
     subtitle: String,
-    backdrop: Backdrop? = null,
+    backdrop: LayerBackdrop? = null,
     content: @Composable () -> Unit
 ) {
     val cardShape = RoundedCornerShape(20.dp)

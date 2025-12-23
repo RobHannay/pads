@@ -28,15 +28,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.worshippads.audio.MusicalKey
-import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
 
 @Composable
 fun PadGrid(
     activePad: MusicalKey?,
     onPadClick: (MusicalKey) -> Unit,
     modifier: Modifier = Modifier,
-    backdrop: Backdrop? = null
+    backdrop: LayerBackdrop? = null
 ) {
     val keys = MusicalKey.entries
     val configuration = LocalConfiguration.current
@@ -82,7 +85,7 @@ fun PadButton(
     isActive: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    backdrop: Backdrop? = null
+    backdrop: LayerBackdrop? = null
 ) {
     val view = LocalView.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -271,21 +274,11 @@ fun PadButton(
                 )
         )
 
-        // Key name with shadow for depth
         Text(
             text = key.noteName,
             color = textColor,
             fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.drawBehind {
-                if (isActive) {
-                    // Text glow effect
-                    drawCircle(
-                        color = AppColors.accentPrimary.copy(alpha = 0.3f),
-                        radius = 40.dp.toPx()
-                    )
-                }
-            }
+            fontWeight = FontWeight.Bold
         )
     }
 }
