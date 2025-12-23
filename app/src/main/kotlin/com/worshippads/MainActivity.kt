@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,6 +31,7 @@ import androidx.navigation.compose.rememberNavController
 import com.worshippads.audio.AudioEngine
 import com.worshippads.audio.AudioPack
 import com.worshippads.audio.PlaybackInfo
+import com.worshippads.ui.AppColors
 import com.worshippads.ui.PadGrid
 
 class MainActivity : ComponentActivity() {
@@ -67,9 +69,10 @@ class MainActivity : ComponentActivity() {
 fun WorshipPadsApp(audioEngine: AudioEngine) {
     val navController = rememberNavController()
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = Color.Black
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppColors.backgroundGradient)
     ) {
         NavHost(
             navController = navController,
@@ -94,6 +97,9 @@ fun WorshipPadsApp(audioEngine: AudioEngine) {
         }
     }
 }
+
+// Shared gradient background modifier
+fun Modifier.gradientBackground() = this.background(AppColors.backgroundGradient)
 
 @Composable
 fun MainScreen(
@@ -122,7 +128,7 @@ fun MainScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(20.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
@@ -136,12 +142,12 @@ fun MainScreen(
             ) {
                 Text(
                     text = "Worship Pads",
-                    color = Color.White,
-                    fontSize = 24.sp,
+                    color = AppColors.textPrimary,
+                    fontSize = 26.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Minor toggle
@@ -155,18 +161,18 @@ fun MainScreen(
                         modifier = Modifier
                             .size(44.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF1C1C1E))
+                            .background(AppColors.glassBackground)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Settings",
-                            tint = Color.White
+                            tint = AppColors.textSecondary
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             PadGrid(
                 activePad = activePad,
@@ -196,21 +202,21 @@ fun DebugOverlay(
 ) {
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF1C1C1E).copy(alpha = 0.9f))
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+            .clip(RoundedCornerShape(16.dp))
+            .background(AppColors.glassBackground)
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "Position",
-                color = Color.Gray,
+                color = AppColors.textMuted,
                 fontSize = 10.sp
             )
             Text(
                 text = playbackInfo.formatTime(playbackInfo.currentPosition),
-                color = Color.White,
+                color = AppColors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -218,12 +224,12 @@ fun DebugOverlay(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "Duration",
-                color = Color.Gray,
+                color = AppColors.textMuted,
                 fontSize = 10.sp
             )
             Text(
                 text = playbackInfo.formatTime(playbackInfo.duration),
-                color = Color.White,
+                color = AppColors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -231,12 +237,12 @@ fun DebugOverlay(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "Remaining",
-                color = Color.Gray,
+                color = AppColors.textMuted,
                 fontSize = 10.sp
             )
             Text(
                 text = playbackInfo.formatTime(playbackInfo.remaining),
-                color = Color(0xFF4CAF50),
+                color = AppColors.accentPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -257,7 +263,7 @@ fun SettingsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(20.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
@@ -273,19 +279,19 @@ fun SettingsScreen(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF1C1C1E))
+                        .background(AppColors.glassBackground)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tint = Color.White
+                        tint = AppColors.textSecondary
                     )
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(
                     text = "Settings",
-                    color = Color.White,
-                    fontSize = 24.sp,
+                    color = AppColors.textPrimary,
+                    fontSize = 26.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -300,12 +306,12 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFF3C3C3E).copy(alpha = 0.5f))
+                        .background(AppColors.surfaceLight.copy(alpha = 0.5f))
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
                     Text(
                         text = currentPack.displayName,
-                        color = Color.Gray,
+                        color = AppColors.textMuted,
                         fontSize = 16.sp
                     )
                 }
@@ -354,17 +360,17 @@ fun SettingsScreen(
                 ) {
                     Text(
                         text = if (showDebugOverlay) "Enabled" else "Disabled",
-                        color = Color.White,
+                        color = AppColors.textPrimary,
                         fontSize = 16.sp
                     )
                     Switch(
                         checked = showDebugOverlay,
                         onCheckedChange = { audioEngine.setShowDebugOverlay(it) },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color(0xFF4CAF50),
-                            checkedTrackColor = Color(0xFF4CAF50).copy(alpha = 0.5f),
-                            uncheckedThumbColor = Color.Gray,
-                            uncheckedTrackColor = Color(0xFF3C3C3E)
+                            checkedThumbColor = AppColors.accentPrimary,
+                            checkedTrackColor = AppColors.accentPrimary.copy(alpha = 0.5f),
+                            uncheckedThumbColor = AppColors.textMuted,
+                            uncheckedTrackColor = AppColors.surfaceLight
                         )
                     )
                 }
@@ -378,7 +384,7 @@ fun SettingsScreen(
             ) {
                 Text(
                     text = "Ambient pads for worship music.\nAudio: Karl Verkade - Bridge (Ambient Pads III)",
-                    color = Color.Gray,
+                    color = AppColors.textSecondary,
                     fontSize = 14.sp,
                     lineHeight = 20.sp
                 )
@@ -400,18 +406,18 @@ fun DurationSlider(
         ) {
             Text(
                 text = "0.5s",
-                color = Color.Gray,
+                color = AppColors.textMuted,
                 fontSize = 12.sp
             )
             Text(
                 text = "%.1fs".format(value),
-                color = Color(0xFF4CAF50),
+                color = AppColors.accentPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = "5.0s",
-                color = Color.Gray,
+                color = AppColors.textMuted,
                 fontSize = 12.sp
             )
         }
@@ -421,9 +427,9 @@ fun DurationSlider(
             onValueChange = onValueChange,
             valueRange = 0.5f..5f,
             colors = SliderDefaults.colors(
-                thumbColor = Color(0xFF4CAF50),
-                activeTrackColor = Color(0xFF4CAF50),
-                inactiveTrackColor = Color(0xFF3C3C3E)
+                thumbColor = AppColors.accentPrimary,
+                activeTrackColor = AppColors.accentPrimary,
+                inactiveTrackColor = AppColors.surfaceLight
             ),
             modifier = Modifier.fillMaxWidth()
         )
@@ -438,7 +444,7 @@ fun ModeToggle(
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(22.dp))
-            .background(Color(0xFF1C1C1E))
+            .background(AppColors.glassBackground)
             .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -464,14 +470,24 @@ fun ModeButton(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(18.dp))
-            .background(if (isSelected) Color(0xFF4CAF50) else Color.Transparent)
+            .background(
+                if (isSelected) {
+                    Brush.horizontalGradient(
+                        colors = listOf(AppColors.accentSecondary, AppColors.accentPrimary)
+                    )
+                } else {
+                    Brush.horizontalGradient(
+                        colors = listOf(Color.Transparent, Color.Transparent)
+                    )
+                }
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
-            color = if (isSelected) Color.Black else Color.White,
+            color = if (isSelected) Color.White else AppColors.textSecondary,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold
         )
@@ -487,20 +503,20 @@ fun SettingsCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF1C1C1E))
+            .clip(RoundedCornerShape(20.dp))
+            .background(AppColors.glassBackground)
             .padding(20.dp)
     ) {
         Text(
             text = title,
-            color = Color.White,
+            color = AppColors.textPrimary,
             fontSize = 18.sp,
             fontWeight = FontWeight.SemiBold
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = subtitle,
-            color = Color.Gray,
+            color = AppColors.textMuted,
             fontSize = 14.sp
         )
         Spacer(modifier = Modifier.height(16.dp))

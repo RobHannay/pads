@@ -1,9 +1,11 @@
 package com.worshippads.ui
 
 import android.content.res.Configuration
+import android.view.HapticFeedbackConstants
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -13,12 +15,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,7 +47,7 @@ fun PadGrid(
 
     Column(
         modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         for (row in 0 until rows) {
@@ -48,7 +55,7 @@ fun PadGrid(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 for (col in 0 until cols) {
                     val index = row * cols + col
@@ -74,67 +81,143 @@ fun PadButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val view = LocalView.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Animate background color
-    val backgroundColor by animateColorAsState(
-        targetValue = when {
-            isActive -> Color(0xFF4CAF50)
-            isPressed -> Color(0xFF3C3C3E)
-            else -> Color(0xFF2C2C2E)
-        },
-        animationSpec = tween(200),
-        label = "bgColor"
+    // Haptic feedback
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        }
+    }
+
+    // Infinite pulse animation for active state
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.02f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
     )
 
-    // Animate text color
+    val pulseGlow by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 0.8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseGlow"
+    )
+
+    // Scale animation for press feedback
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "pressScale"
+    )
+
+    // Combined scale
+    val finalScale = if (isActive) pressScale * pulseScale else pressScale
+
+    // Glow intensity animation
+    val glowIntensity by animateFloatAsState(
+        targetValue = if (isActive) pulseGlow else 0f,
+        animationSpec = tween(400),
+        label = "glow"
+    )
+
+    // Text color animation
     val textColor by animateColorAsState(
-        targetValue = if (isActive) Color.Black else Color.White,
+        targetValue = when {
+            isActive -> Color.White
+            isPressed -> AppColors.textSecondary
+            else -> AppColors.textPrimary
+        },
         animationSpec = tween(200),
         label = "textColor"
     )
 
-    // Scale animation for press feedback
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "scale"
+    // Border color animation
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            isActive -> AppColors.accentPrimary.copy(alpha = 0.6f)
+            isPressed -> Color.White.copy(alpha = 0.2f)
+            else -> Color.White.copy(alpha = 0.08f)
+        },
+        animationSpec = tween(200),
+        label = "borderColor"
     )
 
-    // Glow animation for active state
-    val glowAlpha by animateFloatAsState(
-        targetValue = if (isActive) 0.4f else 0f,
-        animationSpec = tween(300),
-        label = "glow"
-    )
-
-    val glowColor = Color(0xFF4CAF50)
+    val buttonShape = RoundedCornerShape(24.dp)
 
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .scale(scale)
+            .scale(finalScale)
+            // Outer glow layer
             .drawBehind {
-                // Draw glow effect behind the button
-                if (glowAlpha > 0) {
+                if (glowIntensity > 0) {
+                    // Multiple glow layers for depth
+                    val glowColor = AppColors.accentPrimary
+
+                    // Outer soft glow
                     drawRoundRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                glowColor.copy(alpha = glowAlpha),
+                                glowColor.copy(alpha = glowIntensity * 0.3f),
+                                glowColor.copy(alpha = glowIntensity * 0.1f),
                                 Color.Transparent
                             ),
-                            radius = size.maxDimension * 0.8f
+                            center = Offset(size.width / 2, size.height / 2),
+                            radius = size.maxDimension * 0.9f
                         ),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(24.dp.toPx())
+                        cornerRadius = CornerRadius(28.dp.toPx())
+                    )
+
+                    // Inner brighter glow
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = glowIntensity * 0.5f),
+                                Color.Transparent
+                            ),
+                            center = Offset(size.width / 2, size.height / 2),
+                            radius = size.maxDimension * 0.6f
+                        ),
+                        cornerRadius = CornerRadius(24.dp.toPx())
                     )
                 }
             }
-            .clip(RoundedCornerShape(20.dp))
-            .background(backgroundColor)
+            .clip(buttonShape)
+            // Glass morphism background
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = if (isActive) {
+                        listOf(
+                            AppColors.accentPrimary.copy(alpha = 0.4f),
+                            AppColors.accentSecondary.copy(alpha = 0.2f)
+                        )
+                    } else {
+                        listOf(
+                            AppColors.glassHighlight,
+                            AppColors.glassBackground
+                        )
+                    }
+                )
+            )
+            .border(
+                width = 1.dp,
+                color = borderColor,
+                shape = buttonShape
+            )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -142,11 +225,42 @@ fun PadButton(
             ),
         contentAlignment = Alignment.Center
     ) {
+        // Subtle inner highlight at top
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = if (isActive) 0.15f else 0.05f),
+                            Color.Transparent
+                        ),
+                        startY = 0f,
+                        endY = 100f
+                    )
+                )
+        )
+
+        // Key name with shadow for depth
         Text(
             text = key.noteName,
             color = textColor,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.drawBehind {
+                if (isActive) {
+                    // Text glow effect
+                    drawCircle(
+                        color = AppColors.accentPrimary.copy(alpha = 0.3f),
+                        radius = 40.dp.toPx()
+                    )
+                }
+            }
         )
     }
+}
+
+// Easing function for smooth animations
+private val EaseInOutSine: Easing = Easing { fraction ->
+    -(kotlin.math.cos(Math.PI * fraction).toFloat() - 1) / 2
 }
