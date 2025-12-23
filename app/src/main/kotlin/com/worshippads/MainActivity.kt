@@ -1,5 +1,6 @@
 package com.worshippads
 
+import android.media.AudioManager
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -18,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -114,6 +118,8 @@ fun MainScreen(
     val activePad by audioEngine.activePad.collectAsState()
     val isMinor by audioEngine.isMinor.collectAsState()
     val showDebugOverlay by audioEngine.showDebugOverlay.collectAsState()
+    val startFromA by audioEngine.startFromA.collectAsState()
+    val useFlats by audioEngine.useFlats.collectAsState()
 
     // Playback info state updated periodically
     var playbackInfo by remember { mutableStateOf<PlaybackInfo?>(null) }
@@ -147,11 +153,11 @@ fun MainScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Worship Pads",
-                    color = AppColors.textPrimary,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold
+                Icon(
+                    painter = painterResource(R.drawable.ic_logo),
+                    contentDescription = "Worship Pads",
+                    modifier = Modifier.size(48.dp),
+                    tint = Color.Unspecified
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -162,6 +168,28 @@ fun MainScreen(
                         isMinor = isMinor,
                         onToggle = { audioEngine.setMinorMode(it) }
                     )
+                    // Volume button
+                    val context = LocalContext.current
+                    IconButton(
+                        onClick = {
+                            val audioManager = context.getSystemService(AudioManager::class.java)
+                            audioManager?.adjustStreamVolume(
+                                AudioManager.STREAM_MUSIC,
+                                AudioManager.ADJUST_SAME,
+                                AudioManager.FLAG_SHOW_UI
+                            )
+                        },
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(AppColors.glassBackground)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = "Volume",
+                            tint = AppColors.textSecondary
+                        )
+                    }
                     // Settings button
                     IconButton(
                         onClick = onSettingsClick,
@@ -187,7 +215,9 @@ fun MainScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                backdrop = backdrop
+                backdrop = backdrop,
+                startFromA = startFromA,
+                useFlats = useFlats
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -307,6 +337,8 @@ fun SettingsScreen(
     var fadeInDuration by remember { mutableFloatStateOf(audioEngine.getFadeInDuration()) }
     var fadeOutDuration by remember { mutableFloatStateOf(audioEngine.getFadeOutDuration()) }
     val showDebugOverlay by audioEngine.showDebugOverlay.collectAsState()
+    val startFromA by audioEngine.startFromA.collectAsState()
+    val useFlats by audioEngine.useFlats.collectAsState()
     val currentPack by audioEngine.audioPack.collectAsState()
 
     Column(
@@ -371,6 +403,68 @@ fun SettingsScreen(
                         color = AppColors.textMuted,
                         fontSize = 16.sp
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            SettingsCard(
+                title = "Grid",
+                subtitle = "Starting key and note names",
+                backdrop = backdrop
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    listOf(false to "C", true to "A").forEach { (isA, label) ->
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (startFromA == isA) AppColors.accentPrimary.copy(alpha = 0.3f)
+                                    else AppColors.surfaceLight.copy(alpha = 0.5f)
+                                )
+                                .clickable { audioEngine.setStartFromA(isA) }
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (startFromA == isA) AppColors.textPrimary else AppColors.textMuted,
+                                fontSize = 16.sp,
+                                fontWeight = if (startFromA == isA) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    listOf(false to "C#", true to "Db").forEach { (isFlat, label) ->
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (useFlats == isFlat) AppColors.accentPrimary.copy(alpha = 0.3f)
+                                    else AppColors.surfaceLight.copy(alpha = 0.5f)
+                                )
+                                .clickable { audioEngine.setUseFlats(isFlat) }
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (useFlats == isFlat) AppColors.textPrimary else AppColors.textMuted,
+                                fontSize = 16.sp,
+                                fontWeight = if (useFlats == isFlat) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    }
                 }
             }
 

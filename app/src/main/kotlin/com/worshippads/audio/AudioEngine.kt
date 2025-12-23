@@ -29,6 +29,12 @@ class AudioEngine(private val context: Context) {
     private val _showDebugOverlay = MutableStateFlow(prefs.getBoolean(KEY_SHOW_DEBUG, false))
     val showDebugOverlay: StateFlow<Boolean> = _showDebugOverlay.asStateFlow()
 
+    private val _startFromA = MutableStateFlow(prefs.getBoolean(KEY_START_FROM_A, false))
+    val startFromA: StateFlow<Boolean> = _startFromA.asStateFlow()
+
+    private val _useFlats = MutableStateFlow(prefs.getBoolean(KEY_USE_FLATS, false))
+    val useFlats: StateFlow<Boolean> = _useFlats.asStateFlow()
+
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var currentFadeJob: Job? = null
 
@@ -89,6 +95,16 @@ class AudioEngine(private val context: Context) {
     fun setShowDebugOverlay(show: Boolean) {
         _showDebugOverlay.value = show
         prefs.edit().putBoolean(KEY_SHOW_DEBUG, show).apply()
+    }
+
+    fun setStartFromA(startFromA: Boolean) {
+        _startFromA.value = startFromA
+        prefs.edit().putBoolean(KEY_START_FROM_A, startFromA).apply()
+    }
+
+    fun setUseFlats(useFlats: Boolean) {
+        _useFlats.value = useFlats
+        prefs.edit().putBoolean(KEY_USE_FLATS, useFlats).apply()
     }
 
     fun getPlaybackInfo(): PlaybackInfo? {
@@ -295,6 +311,8 @@ class AudioEngine(private val context: Context) {
         private const val KEY_FADE_IN_DURATION = "fade_in_duration_ms"
         private const val KEY_FADE_OUT_DURATION = "fade_out_duration_ms"
         private const val KEY_SHOW_DEBUG = "show_debug_overlay"
+        private const val KEY_START_FROM_A = "start_from_a"
+        private const val KEY_USE_FLATS = "use_flats"
     }
 }
 

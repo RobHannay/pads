@@ -299,19 +299,28 @@ data class PlayerState(
     val volume: Float
 )
 
-enum class MusicalKey(val noteName: String, val majorResource: String, val minorResource: String) {
-    C("C", "c", "c_minor"),
-    C_SHARP("C#", "c_sharp", "c_sharp_minor"),
-    D("D", "d", "d_minor"),
-    D_SHARP("D#", "d_sharp", "d_sharp_minor"),
-    E("E", "e", "e_minor"),
-    F("F", "f", "f_minor"),
-    F_SHARP("F#", "f_sharp", "f_sharp_minor"),
-    G("G", "g", "g_minor"),
-    G_SHARP("G#", "g_sharp", "g_sharp_minor"),
-    A("A", "a", "a_minor"),
-    A_SHARP("A#", "a_sharp", "a_sharp_minor"),
-    B("B", "b", "b_minor");
+enum class MusicalKey(
+    val sharpName: String,
+    val flatName: String,
+    val majorResource: String,
+    val minorResource: String
+) {
+    C("C", "C", "c", "c_minor"),
+    C_SHARP("C♯", "D♭", "c_sharp", "c_sharp_minor"),
+    D("D", "D", "d", "d_minor"),
+    D_SHARP("D♯", "E♭", "d_sharp", "d_sharp_minor"),
+    E("E", "E", "e", "e_minor"),
+    F("F", "F", "f", "f_minor"),
+    F_SHARP("F♯", "G♭", "f_sharp", "f_sharp_minor"),
+    G("G", "G", "g", "g_minor"),
+    G_SHARP("G♯", "A♭", "g_sharp", "g_sharp_minor"),
+    A("A", "A", "a", "a_minor"),
+    A_SHARP("A♯", "B♭", "a_sharp", "a_sharp_minor"),
+    B("B", "B", "b", "b_minor");
+
+    val noteName: String get() = sharpName // Default for backwards compatibility
+
+    fun displayName(useFlats: Boolean): String = if (useFlats) flatName else sharpName
 
     fun getResourceName(isMinor: Boolean): String = if (isMinor) minorResource else majorResource
 }

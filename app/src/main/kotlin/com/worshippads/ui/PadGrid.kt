@@ -39,9 +39,17 @@ fun PadGrid(
     activePad: MusicalKey?,
     onPadClick: (MusicalKey) -> Unit,
     modifier: Modifier = Modifier,
-    backdrop: LayerBackdrop? = null
+    backdrop: LayerBackdrop? = null,
+    startFromA: Boolean = false,
+    useFlats: Boolean = false
 ) {
-    val keys = MusicalKey.entries
+    // Rotate keys to start from A if needed (A is at index 9)
+    val keys = if (startFromA) {
+        val allKeys = MusicalKey.entries
+        allKeys.drop(9) + allKeys.take(9)
+    } else {
+        MusicalKey.entries
+    }
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
@@ -70,7 +78,8 @@ fun PadGrid(
                             isActive = activePad == key,
                             onClick = { onPadClick(key) },
                             modifier = Modifier.weight(1f),
-                            backdrop = backdrop
+                            backdrop = backdrop,
+                            useFlats = useFlats
                         )
                     }
                 }
@@ -85,7 +94,8 @@ fun PadButton(
     isActive: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    backdrop: LayerBackdrop? = null
+    backdrop: LayerBackdrop? = null,
+    useFlats: Boolean = false
 ) {
     val view = LocalView.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -255,7 +265,7 @@ fun PadButton(
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = key.noteName,
+            text = key.displayName(useFlats),
             color = textColor,
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold
