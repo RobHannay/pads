@@ -444,7 +444,7 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    listOf(false to "C#", true to "Db").forEach { (isFlat, label) ->
+                    listOf(false to "♯", true to "♭").forEach { (isFlat, label) ->
                         Box(
                             modifier = Modifier
                                 .weight(1f)
