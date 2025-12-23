@@ -13,16 +13,17 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
     @Volatile
     private var currentIsMinor = false
 
-    fun start(isMinor: Boolean = false) {
+    fun start(pack: AudioPack, isMinor: Boolean = false) {
         if (mediaPlayer != null) return
 
         currentIsMinor = isMinor
         try {
+            val resourceName = pack.getResourceName(key, isMinor)
             val resourceId = context.resources.getIdentifier(
-                key.getResourceName(isMinor), "raw", context.packageName
+                resourceName, "raw", context.packageName
             )
             if (resourceId == 0) {
-                Log.e("PadPlayer", "Resource not found for ${key.noteName}")
+                Log.e("PadPlayer", "Resource not found: $resourceName")
                 return
             }
 

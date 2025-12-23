@@ -20,6 +20,9 @@ class AudioEngine(private val context: Context) {
     private val _isMinor = MutableStateFlow(false)
     val isMinor: StateFlow<Boolean> = _isMinor.asStateFlow()
 
+    private val _audioPack = MutableStateFlow(AudioPack.BRIDGE)
+    val audioPack: StateFlow<AudioPack> = _audioPack.asStateFlow()
+
     private val prefs = context.getSharedPreferences("worship_pads_prefs", Context.MODE_PRIVATE)
     private val _fadeInDurationMs = MutableStateFlow(prefs.getLong(KEY_FADE_IN_DURATION, 2000L))
     private val _fadeOutDurationMs = MutableStateFlow(prefs.getLong(KEY_FADE_OUT_DURATION, 2000L))
@@ -158,7 +161,7 @@ class AudioEngine(private val context: Context) {
 
     private suspend fun fadeIn(key: MusicalKey, minor: Boolean) {
         val player = getPlayers(minor)[key] ?: return
-        player.start(minor)
+        player.start(_audioPack.value, minor)
 
         val durationMs = _fadeInDurationMs.value
         val steps = max(1, durationMs / 16)
@@ -195,7 +198,7 @@ class AudioEngine(private val context: Context) {
         val fromPlayer = players[fromKey] ?: return
         val toPlayer = players[toKey] ?: return
 
-        toPlayer.start(minor)
+        toPlayer.start(_audioPack.value, minor)
 
         // Use fade-in duration for crossfades
         val durationMs = _fadeInDurationMs.value
@@ -217,7 +220,7 @@ class AudioEngine(private val context: Context) {
         val fromPlayer = getPlayers(fromMinor)[key] ?: return
         val toPlayer = getPlayers(toMinor)[key] ?: return
 
-        toPlayer.start(toMinor)
+        toPlayer.start(_audioPack.value, toMinor)
 
         // Use fade-in duration for mode crossfades
         val durationMs = _fadeInDurationMs.value

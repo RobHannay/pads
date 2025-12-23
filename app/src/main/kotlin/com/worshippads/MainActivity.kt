@@ -28,6 +28,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.worshippads.audio.AudioEngine
+import com.worshippads.audio.AudioPack
 import com.worshippads.audio.PlaybackInfo
 import com.worshippads.ui.PadGrid
 
@@ -251,6 +252,7 @@ fun SettingsScreen(
     var fadeInDuration by remember { mutableFloatStateOf(audioEngine.getFadeInDuration()) }
     var fadeOutDuration by remember { mutableFloatStateOf(audioEngine.getFadeOutDuration()) }
     val showDebugOverlay by audioEngine.showDebugOverlay.collectAsState()
+    val currentPack by audioEngine.audioPack.collectAsState()
 
     Box(
         modifier = Modifier
@@ -289,6 +291,27 @@ fun SettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
+
+            SettingsCard(
+                title = "Audio Pack",
+                subtitle = "Select the pad sound pack"
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF3C3C3E).copy(alpha = 0.5f))
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    Text(
+                        text = currentPack.displayName,
+                        color = Color.Gray,
+                        fontSize = 16.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             SettingsCard(
                 title = "Fade In / Crossfade",
