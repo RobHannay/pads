@@ -33,7 +33,6 @@ import com.worshippads.audio.AudioPack
 import com.worshippads.audio.PlaybackInfo
 import com.worshippads.ui.AnimatedBackground
 import com.worshippads.ui.AppColors
-import com.worshippads.ui.AudioVisualizer
 import com.worshippads.ui.PadGrid
 
 class MainActivity : ComponentActivity() {
@@ -177,24 +176,14 @@ fun MainScreen(
                     .fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Audio visualizer at bottom
-            AudioVisualizer(
-                isPlaying = activePad != null,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // Debug overlay
         if (showDebugOverlay && playbackInfo != null) {
             DebugOverlay(
                 playbackInfo = playbackInfo!!,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 70.dp) // Above visualizer
+                modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
     }
