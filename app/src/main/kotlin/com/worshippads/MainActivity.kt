@@ -197,6 +197,7 @@ fun MainScreen(
         if (showDebugOverlay && playbackInfo != null) {
             DebugOverlay(
                 playbackInfo = playbackInfo!!,
+                onSeek = { audioEngine.seekTo(it) },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
@@ -206,55 +207,70 @@ fun MainScreen(
 @Composable
 fun DebugOverlay(
     playbackInfo: PlaybackInfo,
+    onSeek: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    var isScrubbing by remember { mutableStateOf(false) }
+    var scrubPosition by remember { mutableFloatStateOf(0f) }
+
+    Column(
         modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(AppColors.glassBackground)
-            .padding(horizontal = 20.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
-                text = "Position",
-                color = AppColors.textMuted,
-                fontSize = 10.sp
-            )
-            Text(
-                text = playbackInfo.formatTime(playbackInfo.currentPosition),
+                text = playbackInfo.formatTime(
+                    if (isScrubbing) scrubPosition.toInt() else playbackInfo.currentPosition
+                ),
                 color = AppColors.textPrimary,
-                fontSize = 14.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            if (playbackInfo.isCrossfading) {
+                Text(
+                    text = "CROSSFADING",
+                    color = AppColors.accentPrimary,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             Text(
-                text = "Duration",
-                color = AppColors.textMuted,
-                fontSize = 10.sp
-            )
-            Text(
-                text = playbackInfo.formatTime(playbackInfo.duration),
-                color = AppColors.textPrimary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "Remaining",
-                color = AppColors.textMuted,
-                fontSize = 10.sp
-            )
-            Text(
-                text = playbackInfo.formatTime(playbackInfo.remaining),
+                text = "-${playbackInfo.formatTime(playbackInfo.remaining)}",
                 color = AppColors.accentPrimary,
-                fontSize = 14.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
         }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Slider(
+            value = if (isScrubbing) scrubPosition else playbackInfo.currentPosition.toFloat(),
+            onValueChange = {
+                isScrubbing = true
+                scrubPosition = it
+            },
+            onValueChangeFinished = {
+                onSeek(scrubPosition.toInt())
+                isScrubbing = false
+            },
+            valueRange = 0f..playbackInfo.duration.toFloat(),
+            colors = SliderDefaults.colors(
+                thumbColor = AppColors.accentPrimary,
+                activeTrackColor = AppColors.accentPrimary,
+                inactiveTrackColor = AppColors.surfaceLight
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 

@@ -99,7 +99,8 @@ class AudioEngine(private val context: Context) {
 
         return PlaybackInfo(
             currentPosition = player.getCurrentPosition(),
-            duration = player.getDuration()
+            duration = player.getDuration(),
+            isCrossfading = player.isCrossfading()
         )
     }
 
@@ -248,12 +249,19 @@ class AudioEngine(private val context: Context) {
         minorPlayers.values.forEach { it.resume() }
     }
 
+    fun seekTo(positionMs: Int) {
+        val activePad = _activePad.value ?: return
+        val minor = _isMinor.value
+        val player = getPlayers(minor)[activePad] ?: return
+        player.seekTo(positionMs)
+    }
+
     fun cleanup() {
         currentFadeJob?.cancel()
         scope.cancel()
         stopForegroundService()
-        majorPlayers.values.forEach { it.stop() }
-        minorPlayers.values.forEach { it.stop() }
+        majorPlayers.values.forEach { it.cleanup() }
+        minorPlayers.values.forEach { it.cleanup() }
     }
 
     companion object {
@@ -265,7 +273,8 @@ class AudioEngine(private val context: Context) {
 
 data class PlaybackInfo(
     val currentPosition: Int,
-    val duration: Int
+    val duration: Int,
+    val isCrossfading: Boolean = false
 ) {
     val remaining: Int get() = (duration - currentPosition).coerceAtLeast(0)
 
