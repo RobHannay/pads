@@ -59,16 +59,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onPause() {
-        super.onPause()
-        audioEngine.pause()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        audioEngine.resume()
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         audioEngine.cleanup()
