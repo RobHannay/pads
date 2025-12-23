@@ -19,7 +19,8 @@ class AudioEngine(context: Context) {
     val isMinor: StateFlow<Boolean> = _isMinor.asStateFlow()
 
     private val prefs = context.getSharedPreferences("worship_pads_prefs", Context.MODE_PRIVATE)
-    private val _fadeDurationMs = MutableStateFlow(prefs.getLong(KEY_FADE_DURATION, 2000L))
+    private val _fadeInDurationMs = MutableStateFlow(prefs.getLong(KEY_FADE_IN_DURATION, 2000L))
+    private val _fadeOutDurationMs = MutableStateFlow(prefs.getLong(KEY_FADE_OUT_DURATION, 2000L))
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var currentFadeJob: Job? = null
@@ -33,13 +34,21 @@ class AudioEngine(context: Context) {
 
     private fun getPlayers(minor: Boolean) = if (minor) minorPlayers else majorPlayers
 
-    fun setFadeDuration(durationSeconds: Float) {
+    fun setFadeInDuration(durationSeconds: Float) {
         val durationMs = (durationSeconds * 1000).toLong()
-        _fadeDurationMs.value = durationMs
-        prefs.edit().putLong(KEY_FADE_DURATION, durationMs).apply()
+        _fadeInDurationMs.value = durationMs
+        prefs.edit().putLong(KEY_FADE_IN_DURATION, durationMs).apply()
     }
 
-    fun getFadeDuration(): Float = _fadeDurationMs.value / 1000f
+    fun getFadeInDuration(): Float = _fadeInDurationMs.value / 1000f
+
+    fun setFadeOutDuration(durationSeconds: Float) {
+        val durationMs = (durationSeconds * 1000).toLong()
+        _fadeOutDurationMs.value = durationMs
+        prefs.edit().putLong(KEY_FADE_OUT_DURATION, durationMs).apply()
+    }
+
+    fun getFadeOutDuration(): Float = _fadeOutDurationMs.value / 1000f
 
     fun setMinorMode(minor: Boolean) {
         if (_isMinor.value == minor) return
@@ -84,8 +93,8 @@ class AudioEngine(context: Context) {
         val player = getPlayers(minor)[key] ?: return
         player.start(minor)
 
-        val fadeDurationMs = _fadeDurationMs.value
-        val steps = max(1, fadeDurationMs / 16)
+        val durationMs = _fadeInDurationMs.value
+        val steps = max(1, durationMs / 16)
         val volumeStep = 1f / steps
 
         repeat(steps.toInt()) {
@@ -100,8 +109,8 @@ class AudioEngine(context: Context) {
     private suspend fun fadeOut(key: MusicalKey, minor: Boolean) {
         val player = getPlayers(minor)[key] ?: return
 
-        val fadeDurationMs = _fadeDurationMs.value
-        val steps = max(1, fadeDurationMs / 16)
+        val durationMs = _fadeOutDurationMs.value
+        val steps = max(1, durationMs / 16)
         val volumeStep = 1f / steps
 
         repeat(steps.toInt()) {
@@ -121,8 +130,9 @@ class AudioEngine(context: Context) {
 
         toPlayer.start(minor)
 
-        val fadeDurationMs = _fadeDurationMs.value
-        val steps = max(1, fadeDurationMs / 16)
+        // Use fade-in duration for crossfades
+        val durationMs = _fadeInDurationMs.value
+        val steps = max(1, durationMs / 16)
 
         repeat(steps.toInt()) {
             if (!coroutineContext.isActive) return
@@ -142,8 +152,9 @@ class AudioEngine(context: Context) {
 
         toPlayer.start(toMinor)
 
-        val fadeDurationMs = _fadeDurationMs.value
-        val steps = max(1, fadeDurationMs / 16)
+        // Use fade-in duration for mode crossfades
+        val durationMs = _fadeInDurationMs.value
+        val steps = max(1, durationMs / 16)
 
         repeat(steps.toInt()) {
             if (!coroutineContext.isActive) return
@@ -175,6 +186,7 @@ class AudioEngine(context: Context) {
     }
 
     companion object {
-        private const val KEY_FADE_DURATION = "fade_duration_ms"
+        private const val KEY_FADE_IN_DURATION = "fade_in_duration_ms"
+        private const val KEY_FADE_OUT_DURATION = "fade_out_duration_ms"
     }
 }

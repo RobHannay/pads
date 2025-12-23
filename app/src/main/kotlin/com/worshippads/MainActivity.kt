@@ -166,7 +166,8 @@ fun SettingsScreen(
     audioEngine: AudioEngine,
     onBack: () -> Unit
 ) {
-    var fadeDuration by remember { mutableFloatStateOf(audioEngine.getFadeDuration()) }
+    var fadeInDuration by remember { mutableFloatStateOf(audioEngine.getFadeInDuration()) }
+    var fadeOutDuration by remember { mutableFloatStateOf(audioEngine.getFadeOutDuration()) }
 
     Box(
         modifier = Modifier
@@ -207,48 +208,31 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             SettingsCard(
-                title = "Fade Duration",
-                subtitle = "Controls how long crossfades take"
+                title = "Fade In / Crossfade",
+                subtitle = "Duration when starting or switching pads"
             ) {
-                Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "0.5s",
-                            color = Color.Gray,
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = "%.1fs".format(fadeDuration),
-                            color = Color(0xFF4CAF50),
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "5.0s",
-                            color = Color.Gray,
-                            fontSize = 12.sp
-                        )
+                DurationSlider(
+                    value = fadeInDuration,
+                    onValueChange = {
+                        fadeInDuration = it
+                        audioEngine.setFadeInDuration(it)
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Slider(
-                        value = fadeDuration,
-                        onValueChange = { newValue ->
-                            fadeDuration = newValue
-                            audioEngine.setFadeDuration(newValue)
-                        },
-                        valueRange = 0.5f..5f,
-                        colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFF4CAF50),
-                            activeTrackColor = Color(0xFF4CAF50),
-                            inactiveTrackColor = Color(0xFF3C3C3E)
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            SettingsCard(
+                title = "Fade Out",
+                subtitle = "Duration when stopping a pad"
+            ) {
+                DurationSlider(
+                    value = fadeOutDuration,
+                    onValueChange = {
+                        fadeOutDuration = it
+                        audioEngine.setFadeOutDuration(it)
+                    }
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -265,6 +249,49 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun DurationSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "0.5s",
+                color = Color.Gray,
+                fontSize = 12.sp
+            )
+            Text(
+                text = "%.1fs".format(value),
+                color = Color(0xFF4CAF50),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "5.0s",
+                color = Color.Gray,
+                fontSize = 12.sp
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = 0.5f..5f,
+            colors = SliderDefaults.colors(
+                thumbColor = Color(0xFF4CAF50),
+                activeTrackColor = Color(0xFF4CAF50),
+                inactiveTrackColor = Color(0xFF3C3C3E)
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
