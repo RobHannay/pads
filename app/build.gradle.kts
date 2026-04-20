@@ -1,12 +1,24 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
     namespace = "com.worshippads"
     compileSdk = 36
+
+    base {
+        archivesName = "WorshipPads"
+    }
+
+    androidComponents {
+        onVariants { variant ->
+            variant.outputs.forEach { output ->
+                (output as com.android.build.api.variant.impl.VariantOutputImpl)
+                    .outputFileName.set("WorshipPads.apk")
+            }
+        }
+    }
 
     defaultConfig {
         applicationId = "com.worshippads"
