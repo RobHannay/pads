@@ -5,37 +5,28 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Scaled and centered logo (original 200x200 viewport scaled to fit 108x108 with padding) -->
-    <group
-        android:translateX="14"
-        android:translateY="14"
-        android:scaleX="0.4"
-        android:scaleY="0.4">
+    <!-- 3 cols x 4 rows grid of rounded pad tiles (10x10, gap 3, radius 2) -->
+    <!-- Cols: 36, 49, 62 — Rows: 30, 43, 56, 69 -->
+    <!-- Lit tiles form the letter P -->
 
-        <!-- Infinity symbol -->
-        <path
-            android:pathData="M65,110 C65,80 35,80 35,110 S65,140 100,140 S165,140 165,110 S135,80 135,110 C135,140 100,140 100,140 C100,140 65,140 65,110 Z"
-            android:strokeWidth="8"
-            android:fillColor="#00000000"
-            android:strokeColor="#8e44ad"
-            android:strokeLineCap="round" />
+    <!-- Unlit tiles (not part of the P) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.22"
+        android:pathData="M64,30 h6 a2,2 0 0 1 2,2 v6 a2,2 0 0 1 -2,2 h-6 a2,2 0 0 1 -2,-2 v-6 a2,2 0 0 1 2,-2 z
+                          M51,43 h6 a2,2 0 0 1 2,2 v6 a2,2 0 0 1 -2,2 h-6 a2,2 0 0 1 -2,-2 v-6 a2,2 0 0 1 2,-2 z
+                          M64,56 h6 a2,2 0 0 1 2,2 v6 a2,2 0 0 1 -2,2 h-6 a2,2 0 0 1 -2,-2 v-6 a2,2 0 0 1 2,-2 z
+                          M51,69 h6 a2,2 0 0 1 2,2 v6 a2,2 0 0 1 -2,2 h-6 a2,2 0 0 1 -2,-2 v-6 a2,2 0 0 1 2,-2 z
+                          M64,69 h6 a2,2 0 0 1 2,2 v6 a2,2 0 0 1 -2,2 h-6 a2,2 0 0 1 -2,-2 v-6 a2,2 0 0 1 2,-2 z" />
 
-        <!-- Left hand/wing -->
-        <path
-            android:pathData="M80,105 C75,90 70,80 65,75 C60,70 55,75 57,85 C60,95 70,115 80,125 Z"
-            android:fillColor="#8e44ad"
-            android:fillAlpha="0.9" />
-
-        <!-- Right hand/wing -->
-        <path
-            android:pathData="M120,105 C125,90 130,80 135,75 C140,70 145,75 143,85 C140,95 130,115 120,125 Z"
-            android:fillColor="#3498db"
-            android:fillAlpha="0.9" />
-
-        <!-- Bottom connection -->
-        <path
-            android:pathData="M80,125 C90,135 110,135 120,125 C110,120 90,120 80,125 Z"
-            android:fillColor="#6a5acd"
-            android:fillAlpha="0.5" />
-    </group>
+    <!-- Lit tiles forming the P -->
+    <path
+        android:fillColor="#F5576C"
+        android:pathData="M38,30 h6 a2,2 0 0 1 2,2 v6 a2,2 0 0 1 -2,2 h-6 a2,2 0 0 1 -2,-2 v-6 a2,2 0 0 1 2,-2 z
+                          M51,30 h6 a2,2 0 0 1 2,2 v6 a2,2 0 0 1 -2,2 h-6 a2,2 0 0 1 -2,-2 v-6 a2,2 0 0 1 2,-2 z
+                          M38,43 h6 a2,2 0 0 1 2,2 v6 a2,2 0 0 1 -2,2 h-6 a2,2 0 0 1 -2,-2 v-6 a2,2 0 0 1 2,-2 z
+                          M64,43 h6 a2,2 0 0 1 2,2 v6 a2,2 0 0 1 -2,2 h-6 a2,2 0 0 1 -2,-2 v-6 a2,2 0 0 1 2,-2 z
+                          M38,56 h6 a2,2 0 0 1 2,2 v6 a2,2 0 0 1 -2,2 h-6 a2,2 0 0 1 -2,-2 v-6 a2,2 0 0 1 2,-2 z
+                          M51,56 h6 a2,2 0 0 1 2,2 v6 a2,2 0 0 1 -2,2 h-6 a2,2 0 0 1 -2,-2 v-6 a2,2 0 0 1 2,-2 z
+                          M38,69 h6 a2,2 0 0 1 2,2 v6 a2,2 0 0 1 -2,2 h-6 a2,2 0 0 1 -2,-2 v-6 a2,2 0 0 1 2,-2 z" />
 </vector>
