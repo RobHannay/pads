@@ -121,6 +121,7 @@ fun MainScreen(
 ) {
     val activePad by audioEngine.activePad.collectAsState()
     val isMinor by audioEngine.isMinor.collectAsState()
+    val audioPack by audioEngine.audioPack.collectAsState()
     val showDebugOverlay by audioEngine.showDebugOverlay.collectAsState()
     val startFromA by audioEngine.startFromA.collectAsState()
     val useFlats by audioEngine.useFlats.collectAsState()
@@ -173,11 +174,13 @@ fun MainScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Minor toggle
-                    ModeToggle(
-                        isMinor = isMinor,
-                        onToggle = { audioEngine.setMinorMode(it) }
-                    )
+                    // Minor toggle — only for packs that include minor keys
+                    if (audioPack.hasMinor) {
+                        ModeToggle(
+                            isMinor = isMinor,
+                            onToggle = { audioEngine.setMinorMode(it) }
+                        )
+                    }
                     // ChartBuilder button (only if installed)
                     if (chartBuilderIntent != null) {
                         TooltipBox(
@@ -457,18 +460,35 @@ fun SettingsScreen(
                 title = "Audio Pack",
                 subtitle = "Select the pad sound pack"
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(AppColors.surfaceLight.copy(alpha = 0.5f))
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                ) {
-                    Text(
-                        text = currentPack.displayName,
-                        color = AppColors.textMuted,
-                        fontSize = 16.sp
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AudioPack.entries.forEach { pack ->
+                        val selected = pack == currentPack
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (selected) AppColors.accentPrimary.copy(alpha = 0.3f)
+                                    else AppColors.surfaceLight.copy(alpha = 0.5f)
+                                )
+                                .clickable { audioEngine.setAudioPack(pack) }
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = pack.displayName,
+                                color = if (selected) AppColors.textPrimary else AppColors.textMuted,
+                                fontSize = 16.sp,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                            )
+                            Text(
+                                text = if (pack.hasMinor) "Major & Minor" else "Major only",
+                                color = AppColors.textSecondary,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
                 }
             }
 
