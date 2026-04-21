@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.worshippads.BuildConfig
 import com.worshippads.audio.AudioEngine
 import com.worshippads.audio.AudioPack
 import com.worshippads.audio.PlaybackInfo
@@ -670,7 +671,7 @@ fun SettingsScreen(
 
             SettingsCard(
                 title = "About",
-                subtitle = "Worship Pads v1.0"
+                subtitle = "Worship Pads v${BuildConfig.VERSION_NAME}"
             ) {
                 Text(
                     text = "Ambient pads for worship music.\nAudio: Karl Verkade - Bridge (Ambient Pads III)",
