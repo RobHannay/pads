@@ -35,7 +35,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.BaselineShift
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -123,6 +129,7 @@ fun MainScreen(
     val activePad by audioEngine.activePad.collectAsState()
     val isMinor by audioEngine.isMinor.collectAsState()
     val audioPack by audioEngine.audioPack.collectAsState()
+    val octave by audioEngine.octave.collectAsState()
     val showDebugOverlay by audioEngine.showDebugOverlay.collectAsState()
     val startFromA by audioEngine.startFromA.collectAsState()
     val useFlats by audioEngine.useFlats.collectAsState()
@@ -158,108 +165,86 @@ fun MainScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
+            // Chrome row: logo + utility icons
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_logo),
                     contentDescription = "Worship Pads",
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(36.dp),
                     tint = Color.Unspecified
                 )
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Minor toggle — only for packs that include minor keys
-                    if (audioPack.hasMinor) {
-                        ModeToggle(
-                            isMinor = isMinor,
-                            onToggle = { audioEngine.setMinorMode(it) }
+                    TooltipBox(
+                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+                        tooltip = { PlainTooltip { Text("Transpose octave") } },
+                        state = rememberTooltipState()
+                    ) {
+                        OctavePicker(value = octave, onChange = { audioEngine.setOctave(it) })
+                    }
+                    if (chartBuilderIntent != null) {
+                        ChromeIconButton(
+                            tooltip = "Open ChartBuilder",
+                            onClick = { context.startActivity(chartBuilderIntent) }
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_chartbuilder),
+                                contentDescription = "Open ChartBuilder",
+                                modifier = Modifier.size(24.dp),
+                                tint = Color.Unspecified
+                            )
+                        }
+                    }
+                    ChromeIconButton(
+                        tooltip = "Open volume slider",
+                        onClick = {
+                            val audioManager = context.getSystemService(AudioManager::class.java)
+                            audioManager?.adjustStreamVolume(
+                                AudioManager.STREAM_MUSIC,
+                                AudioManager.ADJUST_SAME,
+                                AudioManager.FLAG_SHOW_UI
+                            )
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = "Open volume slider",
+                            tint = AppColors.textSecondary
                         )
                     }
-                    // ChartBuilder button (only if installed)
-                    if (chartBuilderIntent != null) {
-                        TooltipBox(
-                            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-                            tooltip = {
-                                PlainTooltip {
-                                    Text("Open ChartBuilder")
-                                }
-                            },
-                            state = rememberTooltipState()
-                        ) {
-                            IconButton(
-                                onClick = { context.startActivity(chartBuilderIntent) },
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(AppColors.glassBackground)
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_chartbuilder),
-                                    contentDescription = "Open ChartBuilder",
-                                    modifier = Modifier.size(24.dp),
-                                    tint = Color.Unspecified
-                                )
-                            }
-                        }
-                    }
-                    // Volume button
-                    TooltipBox(
-                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-                        tooltip = { PlainTooltip { Text("Open volume slider") } },
-                        state = rememberTooltipState()
+                    ChromeIconButton(
+                        tooltip = "Settings",
+                        onClick = onSettingsClick
                     ) {
-                        IconButton(
-                            onClick = {
-                                val audioManager = context.getSystemService(AudioManager::class.java)
-                                audioManager?.adjustStreamVolume(
-                                    AudioManager.STREAM_MUSIC,
-                                    AudioManager.ADJUST_SAME,
-                                    AudioManager.FLAG_SHOW_UI
-                                )
-                            },
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(AppColors.glassBackground)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                contentDescription = "Open volume slider",
-                                tint = AppColors.textSecondary
-                            )
-                        }
-                    }
-                    // Settings button
-                    TooltipBox(
-                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-                        tooltip = { PlainTooltip { Text("Settings") } },
-                        state = rememberTooltipState()
-                    ) {
-                        IconButton(
-                            onClick = onSettingsClick,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(AppColors.glassBackground)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Settings",
-                                tint = AppColors.textSecondary
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = AppColors.textSecondary
+                        )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            // Performance row: Maj/Min (only when the pack has minor keys)
+            if (audioPack.hasMinor) {
+                ModeToggle(
+                    isMinor = isMinor,
+                    onToggle = { audioEngine.setMinorMode(it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp, bottom = 12.dp)
+                )
+            } else {
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
             PadGrid(
                 activePad = activePad,
@@ -730,10 +715,11 @@ fun DurationSlider(
 @Composable
 fun ModeToggle(
     isMinor: Boolean,
-    onToggle: (Boolean) -> Unit
+    onToggle: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(22.dp))
             .background(AppColors.glassBackground)
             .padding(4.dp),
@@ -742,12 +728,14 @@ fun ModeToggle(
         ModeButton(
             text = "Maj",
             isSelected = !isMinor,
-            onClick = { onToggle(false) }
+            onClick = { onToggle(false) },
+            modifier = Modifier.weight(1f)
         )
         ModeButton(
             text = "Min",
             isSelected = isMinor,
-            onClick = { onToggle(true) }
+            onClick = { onToggle(true) },
+            modifier = Modifier.weight(1f)
         )
     }
 }
@@ -756,10 +744,11 @@ fun ModeToggle(
 fun ModeButton(
     text: String,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(18.dp))
             .background(
                 if (isSelected) {
@@ -780,6 +769,91 @@ fun ModeButton(
             text = text,
             color = if (isSelected) Color.White else AppColors.textSecondary,
             fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChromeIconButton(
+    tooltip: String,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+        tooltip = { PlainTooltip { Text(tooltip) } },
+        state = rememberTooltipState()
+    ) {
+        IconButton(
+            onClick = onClick,
+            modifier = Modifier.size(44.dp)
+        ) {
+            content()
+        }
+    }
+}
+
+private fun octaveSymbol(value: Int) = buildAnnotatedString {
+    if (value == 0) {
+        append("0")
+    } else {
+        withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+            append("8")
+            withStyle(SpanStyle(baselineShift = BaselineShift.Superscript, fontSize = 8.sp)) {
+                append(if (value > 0) "va" else "vb")
+            }
+        }
+    }
+}
+
+@Composable
+fun OctavePicker(
+    value: Int,
+    onChange: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(AppColors.glassBackground)
+            .padding(3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        OctaveSegment(label = octaveSymbol(-1), isSelected = value == -1, onClick = { onChange(-1) })
+        OctaveSegment(label = octaveSymbol(0), isSelected = value == 0, onClick = { onChange(0) })
+        OctaveSegment(label = octaveSymbol(1), isSelected = value == 1, onClick = { onChange(1) })
+    }
+}
+
+@Composable
+private fun OctaveSegment(
+    label: androidx.compose.ui.text.AnnotatedString,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(
+                if (isSelected) {
+                    Brush.horizontalGradient(
+                        colors = listOf(AppColors.accentSecondary, AppColors.accentPrimary)
+                    )
+                } else {
+                    Brush.horizontalGradient(
+                        colors = listOf(Color.Transparent, Color.Transparent)
+                    )
+                }
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = if (isSelected) Color.White else AppColors.textSecondary,
+            fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold
         )
     }

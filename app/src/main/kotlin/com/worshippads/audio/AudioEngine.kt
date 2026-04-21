@@ -16,7 +16,8 @@ import kotlin.math.max
 private data class PlayerId(
     val key: MusicalKey,
     val isMinor: Boolean,
-    val pack: AudioPack
+    val pack: AudioPack,
+    val octave: Int
 )
 
 class AudioEngine(private val context: Context) {
@@ -45,6 +46,9 @@ class AudioEngine(private val context: Context) {
             .getOrDefault(AudioPack.BRIDGE)
     )
     val audioPack: StateFlow<AudioPack> = _audioPack.asStateFlow()
+
+    private val _octave = MutableStateFlow(prefs.getInt(KEY_OCTAVE, 0))
+    val octave: StateFlow<Int> = _octave.asStateFlow()
 
     // Do Not Disturb
     private val _enableDnd = MutableStateFlow(prefs.getBoolean(KEY_ENABLE_DND, false))
@@ -80,8 +84,8 @@ class AudioEngine(private val context: Context) {
         }
     }
 
-    private fun player(key: MusicalKey, minor: Boolean, pack: AudioPack): PadPlayer =
-        padPlayers.getOrPut(PlayerId(key, minor, pack)) { PadPlayer(context, key) }
+    private fun player(key: MusicalKey, minor: Boolean, pack: AudioPack, octave: Int): PadPlayer =
+        padPlayers.getOrPut(PlayerId(key, minor, pack, octave)) { PadPlayer(context, key) }
 
     // Stop all active players except those in the keep set
     private fun stopOrphanedPlayers(keep: Set<PlayerId> = emptySet()) {
@@ -143,10 +147,15 @@ class AudioEngine(private val context: Context) {
         padPlayers.forEach { (id, p) ->
             if (p.isActive()) {
                 val modeSuffix = if (id.isMinor) "m" else ""
+                val octaveSuffix = when {
+                    id.octave < 0 -> "↓"
+                    id.octave > 0 -> "↑"
+                    else -> ""
+                }
                 p.getPlayerStates().forEach { state ->
                     val xfadeSuffix = if (state.label.isNotEmpty()) " ${state.label}" else ""
                     allPlayerStates.add(state.copy(
-                        label = "${id.key.noteName}$modeSuffix$xfadeSuffix"
+                        label = "${id.key.noteName}$modeSuffix$octaveSuffix$xfadeSuffix"
                     ))
                 }
             }
@@ -178,8 +187,9 @@ class AudioEngine(private val context: Context) {
         }
 
         val currentPad = _activePad.value ?: return
-        val fromId = PlayerId(currentPad, wasMinor, previousPack)
-        val toId = PlayerId(currentPad, newMinor, pack)
+        val octave = _octave.value
+        val fromId = PlayerId(currentPad, wasMinor, previousPack, octave)
+        val toId = PlayerId(currentPad, newMinor, pack, octave)
         transitionTo(fromId, toId)
     }
 
@@ -191,8 +201,25 @@ class AudioEngine(private val context: Context) {
 
         val currentPad = _activePad.value ?: return
         val pack = _audioPack.value
-        val fromId = PlayerId(currentPad, wasMinor, pack)
-        val toId = PlayerId(currentPad, minor, pack)
+        val octave = _octave.value
+        val fromId = PlayerId(currentPad, wasMinor, pack, octave)
+        val toId = PlayerId(currentPad, minor, pack, octave)
+        transitionTo(fromId, toId)
+    }
+
+    fun setOctave(octave: Int) {
+        val clamped = octave.coerceIn(-1, 1)
+        if (_octave.value == clamped) return
+
+        val previous = _octave.value
+        _octave.value = clamped
+        prefs.edit().putInt(KEY_OCTAVE, clamped).apply()
+
+        val currentPad = _activePad.value ?: return
+        val minor = _isMinor.value
+        val pack = _audioPack.value
+        val fromId = PlayerId(currentPad, minor, pack, previous)
+        val toId = PlayerId(currentPad, minor, pack, clamped)
         transitionTo(fromId, toId)
     }
 
@@ -200,13 +227,14 @@ class AudioEngine(private val context: Context) {
         val currentPad = _activePad.value
         val minor = _isMinor.value
         val pack = _audioPack.value
+        val octave = _octave.value
 
         currentFadeJob?.cancel()
 
         if (currentPad == key) {
             // Stopping current pad
             _activePad.value = null
-            val keepId = PlayerId(key, minor, pack)
+            val keepId = PlayerId(key, minor, pack, octave)
             stopOrphanedPlayers(setOf(keepId))
             currentFadeJob = scope.launch {
                 fadeOut(keepId)
@@ -215,8 +243,8 @@ class AudioEngine(private val context: Context) {
             }
         } else {
             _activePad.value = key
-            val fromId = currentPad?.let { PlayerId(it, minor, pack) }
-            val toId = PlayerId(key, minor, pack)
+            val fromId = currentPad?.let { PlayerId(it, minor, pack, octave) }
+            val toId = PlayerId(key, minor, pack, octave)
             val keep = setOfNotNull(fromId, toId)
             stopOrphanedPlayers(keep)
             startForegroundService(key, minor)
@@ -241,10 +269,10 @@ class AudioEngine(private val context: Context) {
     }
 
     private suspend fun crossfadePlayers(fromId: PlayerId, toId: PlayerId) {
-        val fromPlayer = player(fromId.key, fromId.isMinor, fromId.pack)
-        val toPlayer = player(toId.key, toId.isMinor, toId.pack)
+        val fromPlayer = player(fromId.key, fromId.isMinor, fromId.pack, fromId.octave)
+        val toPlayer = player(toId.key, toId.isMinor, toId.pack, toId.octave)
 
-        toPlayer.start(toId.pack, toId.isMinor)
+        toPlayer.start(toId.pack, toId.isMinor, toId.octave)
 
         val durationMs = _fadeInDurationMs.value
         val steps = max(1, durationMs / 16)
@@ -262,8 +290,8 @@ class AudioEngine(private val context: Context) {
     }
 
     private suspend fun fadeIn(id: PlayerId) {
-        val p = player(id.key, id.isMinor, id.pack)
-        p.start(id.pack, id.isMinor)
+        val p = player(id.key, id.isMinor, id.pack, id.octave)
+        p.start(id.pack, id.isMinor, id.octave)
 
         val durationMs = _fadeInDurationMs.value
         val steps = max(1, durationMs / 16)
@@ -279,7 +307,7 @@ class AudioEngine(private val context: Context) {
     }
 
     private suspend fun fadeOut(id: PlayerId) {
-        val p = player(id.key, id.isMinor, id.pack)
+        val p = player(id.key, id.isMinor, id.pack, id.octave)
 
         val durationMs = _fadeOutDurationMs.value
         val steps = max(1, durationMs / 16)
@@ -305,7 +333,7 @@ class AudioEngine(private val context: Context) {
 
     fun seekTo(positionMs: Int) {
         val activePad = _activePad.value ?: return
-        val id = PlayerId(activePad, _isMinor.value, _audioPack.value)
+        val id = PlayerId(activePad, _isMinor.value, _audioPack.value, _octave.value)
         padPlayers[id]?.seekTo(positionMs)
     }
 
@@ -365,6 +393,7 @@ class AudioEngine(private val context: Context) {
         private const val KEY_USE_FLATS = "use_flats"
         private const val KEY_ENABLE_DND = "enable_dnd"
         private const val KEY_AUDIO_PACK = "audio_pack"
+        private const val KEY_OCTAVE = "octave"
     }
 }
 

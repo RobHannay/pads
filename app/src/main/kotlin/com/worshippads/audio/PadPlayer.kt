@@ -19,6 +19,8 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
     @Volatile
     private var currentIsMinor = false
     @Volatile
+    private var currentOctave = 0
+    @Volatile
     private var _isCrossfading = false
 
     private var loopJob: Job? = null
@@ -27,13 +29,14 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
     // Crossfade duration for looping (in ms)
     var loopCrossfadeDurationMs: Long = 10000L
 
-    fun start(pack: AudioPack, isMinor: Boolean = false) {
+    fun start(pack: AudioPack, isMinor: Boolean = false, octave: Int = 0) {
         if (primaryPlayer != null) return
 
         currentPack = pack
         currentIsMinor = isMinor
+        currentOctave = octave
 
-        primaryPlayer = createPlayer(pack, isMinor)
+        primaryPlayer = createPlayer(pack, isMinor, octave)
         if (primaryPlayer == null) return
 
         primaryPlayer?.apply {
@@ -46,9 +49,9 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
         startLoopMonitor()
     }
 
-    private fun createPlayer(pack: AudioPack, isMinor: Boolean): MediaPlayer? {
+    private fun createPlayer(pack: AudioPack, isMinor: Boolean, octave: Int): MediaPlayer? {
         return try {
-            val resourceName = pack.getResourceName(key, isMinor)
+            val resourceName = pack.getResourceName(key, isMinor, octave)
             val resourceId = context.resources.getIdentifier(
                 resourceName, "raw", context.packageName
             )
@@ -107,7 +110,7 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
         _isCrossfading = true
 
         // Create new player starting from beginning
-        val newPlayer = createPlayer(pack, currentIsMinor) ?: run {
+        val newPlayer = createPlayer(pack, currentIsMinor, currentOctave) ?: run {
             _isCrossfading = false
             return
         }
