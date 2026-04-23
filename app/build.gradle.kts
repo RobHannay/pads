@@ -26,6 +26,29 @@ android {
         targetSdk = 34
         versionCode = 6
         versionName = "1.4"
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
+
+        externalNativeBuild {
+            cmake {
+                arguments += "-DANDROID_STL=c++_shared"
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+
+    sourceSets {
+        getByName("main") {
+            java.srcDirs("src/main/cpp/rubberband/com")
+        }
     }
 
     buildTypes {

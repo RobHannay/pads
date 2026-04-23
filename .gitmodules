@@ -1,0 +1,3 @@
+[submodule "app/src/main/cpp/rubberband"]
+	path = app/src/main/cpp/rubberband
+	url = https://github.com/breakfastquay/rubberband.git

@@ -71,6 +71,8 @@ class MainActivity : ComponentActivity() {
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
+        com.worshippads.audio.RubberbandSmokeTest.run()
+
         audioEngine = AudioEngine(applicationContext)
 
         setContent {
