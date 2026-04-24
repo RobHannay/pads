@@ -16,7 +16,11 @@ import kotlin.math.pow
 
 private fun pitchForOctave(octave: Int): Double = 2.0.pow(octave)
 
-class PadPlayer(private val context: Context, private val key: MusicalKey) {
+class PadPlayer(
+    private val context: Context,
+    private val key: MusicalKey,
+    private val eqConfig: EqConfig,
+) {
     private var primaryPlayer: ExoPlayer? = null
     private var primaryProcessor: RubberbandAudioProcessor? = null
     private var secondaryPlayer: ExoPlayer? = null
@@ -81,6 +85,7 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
             val processor = RubberbandAudioProcessor().apply {
                 pitchScale = pitchForOctave(octave)
             }
+            val eq = EqAudioProcessor(eqConfig)
             val renderersFactory = object : DefaultRenderersFactory(context) {
                 override fun buildAudioSink(
                     context: Context,
@@ -88,7 +93,7 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
                     enableAudioTrackPlaybackParams: Boolean,
                 ): AudioSink {
                     return DefaultAudioSink.Builder(context)
-                        .setAudioProcessors(arrayOf(processor))
+                        .setAudioProcessors(arrayOf(processor, eq))
                         .build()
                 }
             }

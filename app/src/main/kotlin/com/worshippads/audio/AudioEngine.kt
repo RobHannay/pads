@@ -57,6 +57,22 @@ class AudioEngine(private val context: Context) {
     )
     val octave: StateFlow<Int> = _octave.asStateFlow()
 
+    // EQ: 4 bands + a shared config object every PadPlayer's processor reads from.
+    private val eqConfig = EqConfig().apply {
+        bassDb = prefs.getFloat(KEY_EQ_BASS, 0f)
+        presenceDb = prefs.getFloat(KEY_EQ_PRESENCE, 0f)
+        trebleDb = prefs.getFloat(KEY_EQ_TREBLE, 0f)
+        lowCutHz = prefs.getInt(KEY_EQ_LOW_CUT, 0)
+    }
+    private val _eqBass = MutableStateFlow(eqConfig.bassDb)
+    val eqBass: StateFlow<Float> = _eqBass.asStateFlow()
+    private val _eqPresence = MutableStateFlow(eqConfig.presenceDb)
+    val eqPresence: StateFlow<Float> = _eqPresence.asStateFlow()
+    private val _eqTreble = MutableStateFlow(eqConfig.trebleDb)
+    val eqTreble: StateFlow<Float> = _eqTreble.asStateFlow()
+    private val _eqLowCut = MutableStateFlow(eqConfig.lowCutHz)
+    val eqLowCut: StateFlow<Int> = _eqLowCut.asStateFlow()
+
     // Do Not Disturb
     private val _enableDnd = MutableStateFlow(prefs.getBoolean(KEY_ENABLE_DND, false))
     val enableDnd: StateFlow<Boolean> = _enableDnd.asStateFlow()
@@ -92,7 +108,7 @@ class AudioEngine(private val context: Context) {
     }
 
     private fun player(key: MusicalKey, minor: Boolean, pack: AudioPack, octave: Int): PadPlayer =
-        padPlayers.getOrPut(PlayerId(key, minor, pack, octave)) { PadPlayer(context, key) }
+        padPlayers.getOrPut(PlayerId(key, minor, pack, octave)) { PadPlayer(context, key, eqConfig) }
 
     // Stop all active players except those in the keep set
     private fun stopOrphanedPlayers(keep: Set<PlayerId> = emptySet()) {
@@ -212,6 +228,44 @@ class AudioEngine(private val context: Context) {
         val fromId = PlayerId(currentPad, wasMinor, pack, octave)
         val toId = PlayerId(currentPad, minor, pack, octave)
         transitionTo(fromId, toId)
+    }
+
+    fun setEqBass(db: Float) {
+        val clamped = db.coerceIn(-6f, 6f)
+        if (_eqBass.value == clamped) return
+        _eqBass.value = clamped
+        eqConfig.bassDb = clamped
+        prefs.edit().putFloat(KEY_EQ_BASS, clamped).apply()
+    }
+
+    fun setEqPresence(db: Float) {
+        val clamped = db.coerceIn(-6f, 6f)
+        if (_eqPresence.value == clamped) return
+        _eqPresence.value = clamped
+        eqConfig.presenceDb = clamped
+        prefs.edit().putFloat(KEY_EQ_PRESENCE, clamped).apply()
+    }
+
+    fun setEqTreble(db: Float) {
+        val clamped = db.coerceIn(-6f, 6f)
+        if (_eqTreble.value == clamped) return
+        _eqTreble.value = clamped
+        eqConfig.trebleDb = clamped
+        prefs.edit().putFloat(KEY_EQ_TREBLE, clamped).apply()
+    }
+
+    fun setEqLowCut(hz: Int) {
+        if (_eqLowCut.value == hz) return
+        _eqLowCut.value = hz
+        eqConfig.lowCutHz = hz
+        prefs.edit().putInt(KEY_EQ_LOW_CUT, hz).apply()
+    }
+
+    fun applyEqPreset(preset: EqPreset) {
+        setEqBass(preset.bassDb)
+        setEqPresence(preset.presenceDb)
+        setEqTreble(preset.trebleDb)
+        setEqLowCut(preset.lowCutHz)
     }
 
     /**
@@ -408,6 +462,10 @@ class AudioEngine(private val context: Context) {
         private const val KEY_ENABLE_DND = "enable_dnd"
         private const val KEY_AUDIO_PACK = "audio_pack"
         private const val KEY_OCTAVE = "octave"
+        private const val KEY_EQ_BASS = "eq_bass_db"
+        private const val KEY_EQ_PRESENCE = "eq_presence_db"
+        private const val KEY_EQ_TREBLE = "eq_treble_db"
+        private const val KEY_EQ_LOW_CUT = "eq_low_cut_hz"
     }
 }
 

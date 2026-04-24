@@ -25,6 +25,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -51,6 +54,8 @@ import androidx.navigation.compose.rememberNavController
 import com.worshippads.BuildConfig
 import com.worshippads.audio.AudioEngine
 import com.worshippads.audio.AudioPack
+import com.worshippads.audio.EqPreset
+import kotlin.math.roundToInt
 import com.worshippads.audio.PlaybackInfo
 import com.worshippads.ui.AnimatedBackground
 import com.worshippads.ui.AppColors
@@ -104,11 +109,18 @@ fun WorshipPadsApp(audioEngine: AudioEngine) {
                 MainScreen(
                     audioEngine = audioEngine,
                     onSettingsClick = { navController.navigate("settings") },
+                    onEqClick = { navController.navigate("eq") },
                     backdrop = backdrop
                 )
             }
             composable("settings") {
                 SettingsScreen(
+                    audioEngine = audioEngine,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("eq") {
+                EqScreen(
                     audioEngine = audioEngine,
                     onBack = { navController.popBackStack() }
                 )
@@ -124,6 +136,7 @@ private const val CHARTBUILDER_PACKAGE = "com.multitracks.chartbuilder"
 fun MainScreen(
     audioEngine: AudioEngine,
     onSettingsClick: () -> Unit,
+    onEqClick: () -> Unit,
     backdrop: LayerBackdrop
 ) {
     val activePad by audioEngine.activePad.collectAsState()
@@ -219,6 +232,16 @@ fun MainScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                             contentDescription = "Open volume slider",
+                            tint = AppColors.textSecondary
+                        )
+                    }
+                    ChromeIconButton(
+                        tooltip = "Equalizer",
+                        onClick = onEqClick
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.GraphicEq,
+                            contentDescription = "Equalizer",
                             tint = AppColors.textSecondary
                         )
                     }
@@ -668,6 +691,259 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+}
+
+private val LOW_CUT_OPTIONS = intArrayOf(0, 40, 60, 80, 100, 120, 150, 200)
+
+@Composable
+fun EqScreen(
+    audioEngine: AudioEngine,
+    onBack: () -> Unit,
+) {
+    val bass by audioEngine.eqBass.collectAsState()
+    val presence by audioEngine.eqPresence.collectAsState()
+    val treble by audioEngine.eqTreble.collectAsState()
+    val lowCut by audioEngine.eqLowCut.collectAsState()
+
+    val activePreset = EqPreset.match(bass, presence, treble, lowCut)
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .displayCutoutPadding()
+            .systemBarsPadding()
+            .padding(20.dp)
+    ) {
+        // Fixed header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(AppColors.glassBackground)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = AppColors.textSecondary
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = "EQ",
+                color = AppColors.textPrimary,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = if (activePreset == null) "Custom" else "",
+                color = AppColors.textMuted,
+                fontSize = 14.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                SettingsCard(
+                    title = "Preset",
+                    subtitle = "One-tap starting points. Nudge the sliders to taste."
+                ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        EqPreset.entries.forEach { preset ->
+                            PresetChip(
+                                label = preset.label,
+                                isActive = preset == activePreset,
+                                onClick = { audioEngine.applyEqPreset(preset) }
+                            )
+                        }
+                    }
+                    if (activePreset != null && activePreset != EqPreset.FLAT) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = activePreset.blurb,
+                            color = AppColors.textMuted,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            }
+            item {
+                SettingsCard(
+                    title = "Bass",
+                    subtitle = "Low shelf around 150 Hz"
+                ) {
+                    EqDbSlider(
+                        value = bass,
+                        onChange = { audioEngine.setEqBass(it) }
+                    )
+                }
+            }
+            item {
+                SettingsCard(
+                    title = "Presence",
+                    subtitle = "Peaking EQ around 2.5 kHz — carve or boost vocal presence"
+                ) {
+                    EqDbSlider(
+                        value = presence,
+                        onChange = { audioEngine.setEqPresence(it) }
+                    )
+                }
+            }
+            item {
+                SettingsCard(
+                    title = "Treble",
+                    subtitle = "High shelf around 6 kHz"
+                ) {
+                    EqDbSlider(
+                        value = treble,
+                        onChange = { audioEngine.setEqTreble(it) }
+                    )
+                }
+            }
+            item {
+                SettingsCard(
+                    title = "Low cut",
+                    subtitle = "High-pass filter to tighten the bottom end"
+                ) {
+                    LowCutPicker(
+                        value = lowCut,
+                        onChange = { audioEngine.setEqLowCut(it) }
+                    )
+                }
+            }
+            item {
+                TextButton(
+                    onClick = { audioEngine.applyEqPreset(EqPreset.FLAT) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Reset to Flat",
+                        color = AppColors.textSecondary,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PresetChip(
+    label: String,
+    isActive: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(
+                if (isActive) {
+                    Brush.horizontalGradient(
+                        colors = listOf(AppColors.accentSecondary, AppColors.accentPrimary)
+                    )
+                } else {
+                    Brush.horizontalGradient(
+                        colors = listOf(AppColors.glassBackground, AppColors.glassBackground)
+                    )
+                }
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = if (isActive) Color.White else AppColors.textSecondary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Composable
+private fun EqDbSlider(
+    value: Float,
+    onChange: (Float) -> Unit,
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "−6 dB", color = AppColors.textMuted, fontSize = 12.sp)
+            Text(
+                text = when {
+                    value > 0f -> "+%.0f dB".format(value)
+                    value < 0f -> "%.0f dB".format(value)
+                    else -> "0 dB"
+                },
+                color = AppColors.accentPrimary,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(text = "+6 dB", color = AppColors.textMuted, fontSize = 12.sp)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Slider(
+            value = value,
+            onValueChange = { onChange(it.roundToInt().toFloat()) },
+            valueRange = -6f..6f,
+            steps = 11, // 11 internal steps → 13 positions (−6..+6 in 1 dB)
+            colors = SliderDefaults.colors(
+                thumbColor = AppColors.accentPrimary,
+                activeTrackColor = AppColors.accentPrimary,
+                inactiveTrackColor = AppColors.surfaceLight
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun LowCutPicker(
+    value: Int,
+    onChange: (Int) -> Unit,
+) {
+    Column {
+        val label = if (value == 0) "Off" else "$value Hz"
+        Text(
+            text = label,
+            color = AppColors.accentPrimary,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        val idx = LOW_CUT_OPTIONS.indexOf(value).coerceAtLeast(0)
+        Slider(
+            value = idx.toFloat(),
+            onValueChange = { onChange(LOW_CUT_OPTIONS[it.roundToInt()]) },
+            valueRange = 0f..(LOW_CUT_OPTIONS.size - 1).toFloat(),
+            steps = LOW_CUT_OPTIONS.size - 2,
+            colors = SliderDefaults.colors(
+                thumbColor = AppColors.accentPrimary,
+                activeTrackColor = AppColors.accentPrimary,
+                inactiveTrackColor = AppColors.surfaceLight
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
