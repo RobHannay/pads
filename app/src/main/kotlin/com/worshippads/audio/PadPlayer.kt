@@ -1,14 +1,23 @@
 package com.worshippads.audio
 
 import android.content.Context
-import android.media.MediaPlayer
 import android.util.Log
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.datasource.RawResourceDataSource
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import kotlinx.coroutines.*
 import kotlin.math.max
 
 class PadPlayer(private val context: Context, private val key: MusicalKey) {
-    private var primaryPlayer: MediaPlayer? = null
-    private var secondaryPlayer: MediaPlayer? = null
+    private var primaryPlayer: ExoPlayer? = null
+    private var primaryProcessor: RubberbandAudioProcessor? = null
+    private var secondaryPlayer: ExoPlayer? = null
+    private var secondaryProcessor: RubberbandAudioProcessor? = null
 
     @Volatile
     private var volume = 0f
@@ -29,29 +38,40 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
     // Crossfade duration for looping (in ms)
     var loopCrossfadeDurationMs: Long = 10000L
 
-    fun start(pack: AudioPack, isMinor: Boolean = false, octave: Int = 0) {
+    fun start(pack: AudioPack, isMinor: Boolean = false) {
         if (primaryPlayer != null) return
 
         currentPack = pack
         currentIsMinor = isMinor
-        currentOctave = octave
 
-        primaryPlayer = createPlayer(pack, isMinor, octave)
-        if (primaryPlayer == null) return
+        val built = createPlayer(pack, isMinor) ?: return
+        primaryPlayer = built.first
+        primaryProcessor = built.second
+        built.second.octave = currentOctave
 
-        primaryPlayer?.apply {
-            setVolume(volume, volume)
-            start()
-            isPrepared = true
+        built.first.let {
+            it.volume = volume
+            it.play()
         }
+        isPrepared = true
 
         // Start monitoring for loop crossfade
         startLoopMonitor()
     }
 
-    private fun createPlayer(pack: AudioPack, isMinor: Boolean, octave: Int): MediaPlayer? {
+    /** Shift pitch by integer octaves. Applies live to both primary and secondary players. */
+    fun setOctave(octave: Int) {
+        currentOctave = octave
+        primaryProcessor?.octave = octave
+        secondaryProcessor?.octave = octave
+    }
+
+    private fun createPlayer(
+        pack: AudioPack,
+        isMinor: Boolean,
+    ): Pair<ExoPlayer, RubberbandAudioProcessor>? {
         return try {
-            val resourceName = pack.getResourceName(key, isMinor, octave)
+            val resourceName = pack.getResourceName(key, isMinor)
             val resourceId = context.resources.getIdentifier(
                 resourceName, "raw", context.packageName
             )
@@ -59,17 +79,36 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
                 Log.e("PadPlayer", "Resource not found: $resourceName")
                 return null
             }
+            val uri = RawResourceDataSource.buildRawResourceUri(resourceId)
 
-            MediaPlayer.create(context, resourceId)?.apply {
-                // Don't use built-in looping - we handle it ourselves
-                isLooping = false
-                setOnErrorListener { _, what, extra ->
-                    Log.e("PadPlayer", "MediaPlayer error: what=$what, extra=$extra")
-                    false
+            val processor = RubberbandAudioProcessor()
+            val renderersFactory = object : DefaultRenderersFactory(context) {
+                override fun buildAudioSink(
+                    context: Context,
+                    enableFloatOutput: Boolean,
+                    enableAudioTrackPlaybackParams: Boolean,
+                ): AudioSink {
+                    return DefaultAudioSink.Builder(context)
+                        .setAudioProcessors(arrayOf(processor))
+                        .build()
                 }
             }
+
+            val player = ExoPlayer.Builder(context, renderersFactory)
+                .build()
+                .apply {
+                    repeatMode = Player.REPEAT_MODE_OFF
+                    setMediaItem(MediaItem.fromUri(uri))
+                    prepare()
+                    addListener(object : Player.Listener {
+                        override fun onPlayerError(error: PlaybackException) {
+                            Log.e("PadPlayer", "ExoPlayer error: ${error.message}", error)
+                        }
+                    })
+                }
+            Pair(player, processor)
         } catch (e: Exception) {
-            Log.e("PadPlayer", "Failed to create MediaPlayer for ${key.noteName}", e)
+            Log.e("PadPlayer", "Failed to create ExoPlayer for ${key.noteName}", e)
             null
         }
     }
@@ -83,16 +122,15 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
                     try {
                         val position = player.currentPosition
                         val duration = player.duration
-                        val timeUntilEnd = duration - position
-
-                        // Start crossfade when we're within crossfade duration of the end
-                        if (timeUntilEnd <= loopCrossfadeDurationMs && timeUntilEnd > 0) {
-                            performLoopCrossfade()
-                            // Wait for crossfade to complete before monitoring again
-                            delay(loopCrossfadeDurationMs + 100)
-                        } else {
-                            delay(100) // Check every 100ms
+                        if (duration > 0) {
+                            val timeUntilEnd = duration - position
+                            if (timeUntilEnd <= loopCrossfadeDurationMs && timeUntilEnd > 0) {
+                                performLoopCrossfade()
+                                delay(loopCrossfadeDurationMs + 100)
+                                continue
+                            }
                         }
+                        delay(100)
                     } catch (e: Exception) {
                         delay(100)
                     }
@@ -109,15 +147,18 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
 
         _isCrossfading = true
 
-        // Create new player starting from beginning
-        val newPlayer = createPlayer(pack, currentIsMinor, currentOctave) ?: run {
+        val built = createPlayer(pack, currentIsMinor) ?: run {
             _isCrossfading = false
             return
         }
+        val newPlayer = built.first
+        val newProcessor = built.second
+        newProcessor.octave = currentOctave
         secondaryPlayer = newPlayer
+        secondaryProcessor = newProcessor
 
-        newPlayer.setVolume(0f, 0f)
-        newPlayer.start()
+        newPlayer.volume = 0f
+        newPlayer.play()
 
         val steps = max(1, loopCrossfadeDurationMs / 16)
         val oldStartVolume = volume
@@ -133,8 +174,8 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
             val newVol = (volume * progress).coerceAtMost(1f)
 
             try {
-                oldPlayer.setVolume(oldVol, oldVol)
-                newPlayer.setVolume(newVol, newVol)
+                oldPlayer.volume = oldVol
+                newPlayer.volume = newVol
             } catch (e: Exception) {
                 // Player may have been released
             }
@@ -151,8 +192,10 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
         }
 
         primaryPlayer = newPlayer
+        primaryProcessor = newProcessor
         secondaryPlayer = null
-        newPlayer.setVolume(volume, volume)
+        secondaryProcessor = null
+        newPlayer.volume = volume
         _isCrossfading = false
     }
 
@@ -160,7 +203,7 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
         volume = vol.coerceIn(0f, 1f)
         if (isPrepared) {
             try {
-                primaryPlayer?.setVolume(volume, volume)
+                primaryPlayer?.volume = volume
             } catch (e: Exception) {
                 // Ignore if player not ready
             }
@@ -174,27 +217,27 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
         loopJob = null
 
         try {
-            primaryPlayer?.apply {
-                if (isPrepared) {
-                    stop()
-                }
-                release()
-            }
-        } catch (e: Exception) {
-            Log.e("PadPlayer", "Error stopping primary MediaPlayer", e)
-        }
-
-        try {
-            secondaryPlayer?.apply {
+            primaryPlayer?.run {
                 stop()
                 release()
             }
         } catch (e: Exception) {
-            Log.e("PadPlayer", "Error stopping secondary MediaPlayer", e)
+            Log.e("PadPlayer", "Error stopping primary ExoPlayer", e)
+        }
+
+        try {
+            secondaryPlayer?.run {
+                stop()
+                release()
+            }
+        } catch (e: Exception) {
+            Log.e("PadPlayer", "Error stopping secondary ExoPlayer", e)
         }
 
         primaryPlayer = null
         secondaryPlayer = null
+        primaryProcessor = null
+        secondaryProcessor = null
         isPrepared = false
         volume = 0f
         currentPack = null
@@ -206,7 +249,7 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
                 primaryPlayer?.pause()
                 secondaryPlayer?.pause()
             } catch (e: Exception) {
-                Log.e("PadPlayer", "Error pausing MediaPlayer", e)
+                Log.e("PadPlayer", "Error pausing ExoPlayer", e)
             }
         }
     }
@@ -214,10 +257,10 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
     fun resume() {
         if (isPrepared) {
             try {
-                primaryPlayer?.start()
-                secondaryPlayer?.start()
+                primaryPlayer?.play()
+                secondaryPlayer?.play()
             } catch (e: Exception) {
-                Log.e("PadPlayer", "Error resuming MediaPlayer", e)
+                Log.e("PadPlayer", "Error resuming ExoPlayer", e)
             }
         }
     }
@@ -228,25 +271,26 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
 
     fun getPlayerStates(): List<PlayerState> {
         val states = mutableListOf<PlayerState>()
-        primaryPlayer?.let {
+        primaryPlayer?.let { p ->
             try {
+                val duration = p.duration.let { if (it > 0) it.toInt() else 0 }
                 states.add(PlayerState(
                     label = if (_isCrossfading) "(old)" else "",
-                    position = it.currentPosition,
-                    duration = it.duration,
+                    position = p.currentPosition.toInt(),
+                    duration = duration,
                     volume = if (_isCrossfading) {
-                        // During crossfade, primary is fading out
                         volume * (1f - getCrossfadeProgress())
                     } else volume
                 ))
             } catch (_: Exception) {}
         }
-        secondaryPlayer?.let {
+        secondaryPlayer?.let { p ->
             try {
+                val duration = p.duration.let { if (it > 0) it.toInt() else 0 }
                 states.add(PlayerState(
                     label = "(new)",
-                    position = it.currentPosition,
-                    duration = it.duration,
+                    position = p.currentPosition.toInt(),
+                    duration = duration,
                     volume = volume * getCrossfadeProgress()
                 ))
             } catch (_: Exception) {}
@@ -264,7 +308,7 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
 
     fun getCurrentPosition(): Int = if (isPrepared) {
         try {
-            primaryPlayer?.currentPosition ?: 0
+            primaryPlayer?.currentPosition?.toInt() ?: 0
         } catch (e: Exception) {
             0
         }
@@ -272,7 +316,7 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
 
     fun getDuration(): Int = if (isPrepared) {
         try {
-            primaryPlayer?.duration ?: 0
+            primaryPlayer?.duration?.let { if (it > 0) it.toInt() else 0 } ?: 0
         } catch (e: Exception) {
             0
         }
@@ -281,7 +325,7 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
     fun seekTo(positionMs: Int) {
         if (isPrepared) {
             try {
-                primaryPlayer?.seekTo(positionMs)
+                primaryPlayer?.seekTo(positionMs.toLong())
             } catch (e: Exception) {
                 Log.e("PadPlayer", "Error seeking", e)
             }

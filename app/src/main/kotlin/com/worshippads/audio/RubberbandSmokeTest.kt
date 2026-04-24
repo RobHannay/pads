@@ -47,11 +47,24 @@ object RubberbandSmokeTest {
     }
 
     sealed class Result {
+        /** True if rubberband is fast enough to run in real-time on this device. */
+        abstract val isUsable: Boolean
+
         data class Ok(val blockSize: Int, val startDelay: Int, val shiftMicros: Long) : Result() {
+            // Real-time budget for one block of audio in microseconds.
+            // We insist on at least 2× headroom so transient CPU load doesn't
+            // cause under-runs during real playback.
+            override val isUsable: Boolean
+                get() {
+                    val budget = blockSize * 1_000_000L / 48_000
+                    return shiftMicros * 2 < budget
+                }
+
             override fun toString() =
-                "rubberband OK: blockSize=$blockSize startDelay=$startDelay shift=${shiftMicros}µs"
+                "rubberband OK: blockSize=$blockSize startDelay=$startDelay shift=${shiftMicros}µs usable=$isUsable"
         }
         data class Fail(val type: String, val message: String) : Result() {
+            override val isUsable = false
             override fun toString() = "rubberband FAIL: $type: $message"
         }
     }

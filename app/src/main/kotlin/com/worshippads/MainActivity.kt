@@ -71,8 +71,6 @@ class MainActivity : ComponentActivity() {
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        com.worshippads.audio.RubberbandSmokeTest.run()
-
         audioEngine = AudioEngine(applicationContext)
 
         setContent {
@@ -185,12 +183,14 @@ fun MainScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TooltipBox(
-                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-                        tooltip = { PlainTooltip { Text("Transpose octave") } },
-                        state = rememberTooltipState()
-                    ) {
-                        OctavePicker(value = octave, onChange = { audioEngine.setOctave(it) })
+                    if (audioEngine.supportsOctave) {
+                        TooltipBox(
+                            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+                            tooltip = { PlainTooltip { Text("Transpose octave") } },
+                            state = rememberTooltipState()
+                        ) {
+                            OctavePicker(value = octave, onChange = { audioEngine.setOctave(it) })
+                        }
                     }
                     if (chartBuilderIntent != null) {
                         ChromeIconButton(

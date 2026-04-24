@@ -24,8 +24,8 @@ android {
         applicationId = "com.worshippads"
         minSdk = 26
         targetSdk = 34
-        versionCode = 6
-        versionName = "1.4"
+        versionCode = 7
+        versionName = "2.0"
 
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
@@ -97,6 +97,10 @@ dependencies {
 
     // Media session for background playback
     implementation("androidx.media:media:1.7.0")
+
+    // Media3 — ExoPlayer for PCM pipeline with custom AudioProcessor
+    implementation("androidx.media3:media3-exoplayer:1.4.1")
+    implementation("androidx.media3:media3-common:1.4.1")
 
     // Liquid Glass effect
     implementation("io.github.kyant0:backdrop:1.0.3")
