@@ -12,6 +12,9 @@ import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import kotlinx.coroutines.*
 import kotlin.math.max
+import kotlin.math.pow
+
+private fun pitchForOctave(octave: Int): Double = 2.0.pow(octave)
 
 class PadPlayer(private val context: Context, private val key: MusicalKey) {
     private var primaryPlayer: ExoPlayer? = null
@@ -38,16 +41,16 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
     // Crossfade duration for looping (in ms)
     var loopCrossfadeDurationMs: Long = 10000L
 
-    fun start(pack: AudioPack, isMinor: Boolean = false) {
+    fun start(pack: AudioPack, isMinor: Boolean = false, octave: Int = 0) {
         if (primaryPlayer != null) return
 
         currentPack = pack
         currentIsMinor = isMinor
+        currentOctave = octave
 
-        val built = createPlayer(pack, isMinor) ?: return
+        val built = createPlayer(pack, isMinor, octave) ?: return
         primaryPlayer = built.first
         primaryProcessor = built.second
-        built.second.octave = currentOctave
 
         built.first.let {
             it.volume = volume
@@ -59,16 +62,10 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
         startLoopMonitor()
     }
 
-    /** Shift pitch by integer octaves. Applies live to both primary and secondary players. */
-    fun setOctave(octave: Int) {
-        currentOctave = octave
-        primaryProcessor?.octave = octave
-        secondaryProcessor?.octave = octave
-    }
-
     private fun createPlayer(
         pack: AudioPack,
         isMinor: Boolean,
+        octave: Int,
     ): Pair<ExoPlayer, RubberbandAudioProcessor>? {
         return try {
             val resourceName = pack.getResourceName(key, isMinor)
@@ -81,7 +78,9 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
             }
             val uri = RawResourceDataSource.buildRawResourceUri(resourceId)
 
-            val processor = RubberbandAudioProcessor()
+            val processor = RubberbandAudioProcessor().apply {
+                pitchScale = pitchForOctave(octave)
+            }
             val renderersFactory = object : DefaultRenderersFactory(context) {
                 override fun buildAudioSink(
                     context: Context,
@@ -147,13 +146,12 @@ class PadPlayer(private val context: Context, private val key: MusicalKey) {
 
         _isCrossfading = true
 
-        val built = createPlayer(pack, currentIsMinor) ?: run {
+        val built = createPlayer(pack, currentIsMinor, currentOctave) ?: run {
             _isCrossfading = false
             return
         }
         val newPlayer = built.first
         val newProcessor = built.second
-        newProcessor.octave = currentOctave
         secondaryPlayer = newPlayer
         secondaryProcessor = newProcessor
 

@@ -6,23 +6,21 @@ import androidx.media3.common.audio.BaseAudioProcessor
 import com.breakfastquay.rubberband.RubberBandLiveShifter
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.pow
-
 /**
  * Media3 AudioProcessor that runs PCM16 through rubberband's LiveShifter for
  * real-time pitch shifting. Inserted into ExoPlayer's audio processor chain.
  *
- * Pitch is controlled by [octave] (integer −1 / 0 / +1); changes take effect
- * on the next block. Setting 0 is still routed through the shifter (for a
- * few ms of extra latency) — simpler than bypassing the processor conditionally.
+ * [pitchScale] is continuous (0.5 = octave down, 2.0 = octave up) so callers
+ * can ramp the pitch smoothly between targets. Writes take effect on the next
+ * block.
  */
 class RubberbandAudioProcessor : BaseAudioProcessor() {
 
     @Volatile
-    var octave: Int = 0
+    var pitchScale: Double = 1.0
         set(value) {
             field = value
-            shifter?.setPitchScale(2.0.pow(value))
+            shifter?.setPitchScale(value)
         }
 
     private var shifter: RubberBandLiveShifter? = null
@@ -47,7 +45,7 @@ class RubberbandAudioProcessor : BaseAudioProcessor() {
             RubberBandLiveShifter.OptionWindowMedium or
                 RubberBandLiveShifter.OptionChannelsTogether
         )
-        s.setPitchScale(2.0.pow(octave))
+        s.setPitchScale(pitchScale)
         shifter = s
         blockSize = s.blockSize
         channelCount = inputAudioFormat.channelCount

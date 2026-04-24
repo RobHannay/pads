@@ -728,13 +728,13 @@ fun ModeToggle(
         verticalAlignment = Alignment.CenterVertically
     ) {
         ModeButton(
-            text = "Maj",
+            text = "Major",
             isSelected = !isMinor,
             onClick = { onToggle(false) },
             modifier = Modifier.weight(1f)
         )
         ModeButton(
-            text = "Min",
+            text = "Minor",
             isSelected = isMinor,
             onClick = { onToggle(true) },
             modifier = Modifier.weight(1f)
