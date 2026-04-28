@@ -59,12 +59,18 @@ class EqAudioProcessor(private val config: EqConfig) : BaseAudioProcessor() {
         lastBass = b; lastPresence = p; lastTreble = t; lastLowCut = lc
 
         val stages = mutableListOf<Biquad>()
-        if (b != 0f) { bass.setLowShelf(sampleRate, 150f, b, 0.707f); stages += bass }
+        // Low-Q peaking filters (Q ≈ 0.7) at the band centre frequencies —
+        // wide, shelf-like boosts/cuts whose maximum response sits exactly at
+        // the centre frequency. Keeps the parametric-EQ graph handle on the
+        // curve, rather than at the shelf's corner where response is only
+        // half the shelf gain.
+        if (b != 0f) { bass.setPeaking(sampleRate, 150f, b, 1.0f); stages += bass }
         if (p != 0f) { presence.setPeaking(sampleRate, 2500f, p, 0.9f); stages += presence }
-        if (t != 0f) { treble.setHighShelf(sampleRate, 6000f, t, 0.707f); stages += treble }
+        if (t != 0f) { treble.setPeaking(sampleRate, 6000f, t, 1.0f); stages += treble }
         if (lc > 0) {
-            hp1.setHighPass(sampleRate, lc.toFloat(), 0.707f)
-            hp2.setHighPass(sampleRate, lc.toFloat(), 0.707f)
+            val cutoff = EqResponse.effectiveHpfCutoff(lc)
+            hp1.setHighPass(sampleRate, cutoff, 0.707f)
+            hp2.setHighPass(sampleRate, cutoff, 0.707f)
             stages += hp1
             stages += hp2
         }

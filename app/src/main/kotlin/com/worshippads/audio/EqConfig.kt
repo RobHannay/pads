@@ -39,20 +39,26 @@ enum class EqPreset(
     val trebleDb: Float,
     val lowCutHz: Int,
 ) {
-    FLAT("Flat", "No change", 0f, 0f, 0f, 0),
-    WARM("Warm", "Cosy, darker — good under a lead vocal", 1f, 0f, -3f, 0),
-    BRIGHT("Bright", "Airy, sits on top of a mix", 0f, 0f, 3f, 0),
-    UNDER_VOCAL("Under vocal", "Carves space for vocal presence", 0f, -4f, 0f, 0),
+    FLAT("Flat", "No change", 0f, 0f, 0f, 20),
+    WARM("Warm", "Cosy, darker — good under a lead vocal", 1f, 0f, -3f, 20),
+    BRIGHT("Bright", "Airy, sits on top of a mix", 0f, 0f, 3f, 20),
+    UNDER_VOCAL("Under vocal", "Carves space for vocal presence", 0f, -4f, 0f, 20),
     SMALL_SPEAKER("Small speaker", "Tight for phone / laptop speakers", 0f, 0f, -2f, 120);
 
     companion object {
-        /** Return the preset whose values match the given configuration, or null. */
-        fun match(bassDb: Float, presenceDb: Float, trebleDb: Float, lowCutHz: Int): EqPreset? =
-            entries.firstOrNull {
-                it.bassDb == bassDb &&
-                    it.presenceDb == presenceDb &&
-                    it.trebleDb == trebleDb &&
+        /**
+         * Return the preset whose values (approximately) match the given
+         * configuration, or null. dB values are matched within 0.3 dB so that
+         * smooth continuous drag doesn't lose a preset match by a hair.
+         */
+        fun match(bassDb: Float, presenceDb: Float, trebleDb: Float, lowCutHz: Int): EqPreset? {
+            val tol = 0.3f
+            return entries.firstOrNull {
+                kotlin.math.abs(it.bassDb - bassDb) < tol &&
+                    kotlin.math.abs(it.presenceDb - presenceDb) < tol &&
+                    kotlin.math.abs(it.trebleDb - trebleDb) < tol &&
                     it.lowCutHz == lowCutHz
             }
+        }
     }
 }

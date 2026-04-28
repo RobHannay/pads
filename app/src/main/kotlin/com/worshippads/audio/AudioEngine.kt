@@ -62,7 +62,10 @@ class AudioEngine(private val context: Context) {
         bassDb = prefs.getFloat(KEY_EQ_BASS, 0f)
         presenceDb = prefs.getFloat(KEY_EQ_PRESENCE, 0f)
         trebleDb = prefs.getFloat(KEY_EQ_TREBLE, 0f)
-        lowCutHz = prefs.getInt(KEY_EQ_LOW_CUT, 0)
+        // HPF is always engaged in the chain. At 20 Hz it has no audible
+        // effect on the pad material (no real content that low). Migrating
+        // legacy 0 / "off" prefs up to 20.
+        lowCutHz = prefs.getInt(KEY_EQ_LOW_CUT, 20).coerceAtLeast(20)
     }
     private val _eqBass = MutableStateFlow(eqConfig.bassDb)
     val eqBass: StateFlow<Float> = _eqBass.asStateFlow()
@@ -255,10 +258,11 @@ class AudioEngine(private val context: Context) {
     }
 
     fun setEqLowCut(hz: Int) {
-        if (_eqLowCut.value == hz) return
-        _eqLowCut.value = hz
-        eqConfig.lowCutHz = hz
-        prefs.edit().putInt(KEY_EQ_LOW_CUT, hz).apply()
+        val clamped = hz.coerceIn(20, 200)
+        if (_eqLowCut.value == clamped) return
+        _eqLowCut.value = clamped
+        eqConfig.lowCutHz = clamped
+        prefs.edit().putInt(KEY_EQ_LOW_CUT, clamped).apply()
     }
 
     fun applyEqPreset(preset: EqPreset) {
