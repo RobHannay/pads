@@ -79,7 +79,6 @@ class EqAudioProcessor(private val config: EqConfig) : BaseAudioProcessor() {
 
     override fun queueInput(inputBuffer: ByteBuffer) {
         if (!inputBuffer.hasRemaining()) return
-        recomputeIfNeeded()
 
         val shortIn = inputBuffer.order(ByteOrder.nativeOrder()).asShortBuffer()
         val frames = shortIn.remaining() / channelCount
@@ -89,6 +88,17 @@ class EqAudioProcessor(private val config: EqConfig) : BaseAudioProcessor() {
         }
         val bytes = frames * channelCount * 2
         val out = replaceOutputBuffer(bytes).order(ByteOrder.nativeOrder())
+
+        // Bypass: skip all biquad work and emit the input verbatim.
+        if (config.bypassed) {
+            out.asShortBuffer().put(shortIn)
+            out.position(bytes)
+            inputBuffer.position(inputBuffer.limit())
+            out.flip()
+            return
+        }
+
+        recomputeIfNeeded()
         val stages = activeStages
 
         if (stages.isEmpty()) {

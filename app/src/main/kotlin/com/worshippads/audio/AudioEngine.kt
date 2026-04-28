@@ -66,6 +66,7 @@ class AudioEngine(private val context: Context) {
         // effect on the pad material (no real content that low). Migrating
         // legacy 0 / "off" prefs up to 20.
         lowCutHz = prefs.getInt(KEY_EQ_LOW_CUT, 20).coerceAtLeast(20)
+        bypassed = prefs.getBoolean(KEY_EQ_BYPASS, false)
     }
     private val _eqBass = MutableStateFlow(eqConfig.bassDb)
     val eqBass: StateFlow<Float> = _eqBass.asStateFlow()
@@ -75,6 +76,9 @@ class AudioEngine(private val context: Context) {
     val eqTreble: StateFlow<Float> = _eqTreble.asStateFlow()
     private val _eqLowCut = MutableStateFlow(eqConfig.lowCutHz)
     val eqLowCut: StateFlow<Int> = _eqLowCut.asStateFlow()
+    private val _eqBypass = MutableStateFlow(eqConfig.bypassed)
+    val eqBypass: StateFlow<Boolean> = _eqBypass.asStateFlow()
+    private var presetJob: Job? = null
 
     // Do Not Disturb
     private val _enableDnd = MutableStateFlow(prefs.getBoolean(KEY_ENABLE_DND, false))
@@ -233,7 +237,8 @@ class AudioEngine(private val context: Context) {
         transitionTo(fromId, toId)
     }
 
-    fun setEqBass(db: Float) {
+    fun setEqBass(db: Float, fromPreset: Boolean = false) {
+        if (!fromPreset) presetJob?.cancel()
         val clamped = db.coerceIn(-6f, 6f)
         if (_eqBass.value == clamped) return
         _eqBass.value = clamped
@@ -241,7 +246,8 @@ class AudioEngine(private val context: Context) {
         prefs.edit().putFloat(KEY_EQ_BASS, clamped).apply()
     }
 
-    fun setEqPresence(db: Float) {
+    fun setEqPresence(db: Float, fromPreset: Boolean = false) {
+        if (!fromPreset) presetJob?.cancel()
         val clamped = db.coerceIn(-6f, 6f)
         if (_eqPresence.value == clamped) return
         _eqPresence.value = clamped
@@ -249,7 +255,8 @@ class AudioEngine(private val context: Context) {
         prefs.edit().putFloat(KEY_EQ_PRESENCE, clamped).apply()
     }
 
-    fun setEqTreble(db: Float) {
+    fun setEqTreble(db: Float, fromPreset: Boolean = false) {
+        if (!fromPreset) presetJob?.cancel()
         val clamped = db.coerceIn(-6f, 6f)
         if (_eqTreble.value == clamped) return
         _eqTreble.value = clamped
@@ -257,7 +264,8 @@ class AudioEngine(private val context: Context) {
         prefs.edit().putFloat(KEY_EQ_TREBLE, clamped).apply()
     }
 
-    fun setEqLowCut(hz: Int) {
+    fun setEqLowCut(hz: Int, fromPreset: Boolean = false) {
+        if (!fromPreset) presetJob?.cancel()
         val clamped = hz.coerceIn(20, 200)
         if (_eqLowCut.value == clamped) return
         _eqLowCut.value = clamped
@@ -265,11 +273,51 @@ class AudioEngine(private val context: Context) {
         prefs.edit().putInt(KEY_EQ_LOW_CUT, clamped).apply()
     }
 
-    fun applyEqPreset(preset: EqPreset) {
-        setEqBass(preset.bassDb)
-        setEqPresence(preset.presenceDb)
-        setEqTreble(preset.trebleDb)
-        setEqLowCut(preset.lowCutHz)
+    fun setEqBypass(bypassed: Boolean) {
+        if (_eqBypass.value == bypassed) return
+        _eqBypass.value = bypassed
+        eqConfig.bypassed = bypassed
+        prefs.edit().putBoolean(KEY_EQ_BYPASS, bypassed).apply()
+    }
+
+    /**
+     * Tween the four EQ values from current to the preset target over [animateMs].
+     * Cancellable: any direct setter call (e.g. user grabs a handle) interrupts
+     * the animation cleanly at the current position.
+     */
+    fun applyEqPreset(preset: EqPreset, animateMs: Int = 250) {
+        presetJob?.cancel()
+        if (animateMs <= 0) {
+            setEqBass(preset.bassDb, fromPreset = true)
+            setEqPresence(preset.presenceDb, fromPreset = true)
+            setEqTreble(preset.trebleDb, fromPreset = true)
+            setEqLowCut(preset.lowCutHz, fromPreset = true)
+            return
+        }
+        val fromBass = _eqBass.value
+        val fromPresence = _eqPresence.value
+        val fromTreble = _eqTreble.value
+        val fromLowCut = _eqLowCut.value
+        val startNs = System.nanoTime()
+        val durNs = animateMs.toLong() * 1_000_000L
+        presetJob = scope.launch {
+            while (true) {
+                if (!isActive) return@launch
+                val elapsed = System.nanoTime() - startNs
+                val t = (elapsed.toFloat() / durNs).coerceIn(0f, 1f)
+                // Ease-out cubic for a soft landing.
+                val eased = 1f - (1f - t) * (1f - t) * (1f - t)
+                setEqBass(fromBass + (preset.bassDb - fromBass) * eased, fromPreset = true)
+                setEqPresence(fromPresence + (preset.presenceDb - fromPresence) * eased, fromPreset = true)
+                setEqTreble(fromTreble + (preset.trebleDb - fromTreble) * eased, fromPreset = true)
+                setEqLowCut(
+                    (fromLowCut + (preset.lowCutHz - fromLowCut) * eased).toInt(),
+                    fromPreset = true,
+                )
+                if (t >= 1f) break
+                delay(16)
+            }
+        }
     }
 
     /**
@@ -470,6 +518,7 @@ class AudioEngine(private val context: Context) {
         private const val KEY_EQ_PRESENCE = "eq_presence_db"
         private const val KEY_EQ_TREBLE = "eq_treble_db"
         private const val KEY_EQ_LOW_CUT = "eq_low_cut_hz"
+        private const val KEY_EQ_BYPASS = "eq_bypass"
     }
 }
 

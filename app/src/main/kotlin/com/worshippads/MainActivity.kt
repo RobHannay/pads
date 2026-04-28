@@ -703,6 +703,7 @@ fun EqScreen(
     val presence by audioEngine.eqPresence.collectAsState()
     val treble by audioEngine.eqTreble.collectAsState()
     val lowCut by audioEngine.eqLowCut.collectAsState()
+    val bypassed by audioEngine.eqBypass.collectAsState()
 
     val activePreset = EqPreset.match(bass, presence, treble, lowCut)
 
@@ -745,6 +746,11 @@ fun EqScreen(
                 color = AppColors.textMuted,
                 fontSize = 14.sp
             )
+            Spacer(modifier = Modifier.width(12.dp))
+            BypassPill(
+                bypassed = bypassed,
+                onToggle = { audioEngine.setEqBypass(!bypassed) },
+            )
         }
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -754,6 +760,7 @@ fun EqScreen(
             presenceDb = presence,
             trebleDb = treble,
             lowCutHz = lowCut,
+            bypassed = bypassed,
             onBassChange = { audioEngine.setEqBass(it) },
             onPresenceChange = { audioEngine.setEqPresence(it) },
             onTrebleChange = { audioEngine.setEqTreble(it) },
@@ -818,10 +825,37 @@ fun EqScreen(
 }
 
 private fun formatDb(db: Float): String {
-    if (db == 0f) return "0"
-    val isWhole = db == db.toInt().toFloat()
-    val body = if (isWhole) "%d".format(db.toInt()) else "%.1f".format(db)
+    val body = "%.1f".format(db)
     return if (db > 0f) "+$body" else body
+}
+
+@Composable
+private fun BypassPill(bypassed: Boolean, onToggle: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(
+                if (bypassed) {
+                    Brush.horizontalGradient(
+                        colors = listOf(AppColors.accentSecondary, AppColors.accentPrimary)
+                    )
+                } else {
+                    Brush.horizontalGradient(
+                        colors = listOf(AppColors.glassBackground, AppColors.glassBackground)
+                    )
+                }
+            )
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Bypass",
+            color = if (bypassed) Color.White else AppColors.textSecondary,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
 }
 
 @Composable
@@ -839,6 +873,8 @@ private fun EqValueReadout(label: String, value: String) {
             color = AppColors.accentPrimary,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
+            // Tabular figures so digit width doesn't jitter while dragging.
+            style = LocalTextStyle.current.copy(fontFeatureSettings = "tnum"),
         )
     }
 }

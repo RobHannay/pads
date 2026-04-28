@@ -12,7 +12,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -73,6 +76,7 @@ fun EqGraphView(
     presenceDb: Float,
     trebleDb: Float,
     lowCutHz: Int,
+    bypassed: Boolean,
     onBassChange: (Float) -> Unit,
     onPresenceChange: (Float) -> Unit,
     onTrebleChange: (Float) -> Unit,
@@ -86,6 +90,11 @@ fun EqGraphView(
 ) {
     var active by remember { mutableStateOf<Band?>(null) }
     val textMeasurer = rememberTextMeasurer()
+    val haptics = LocalHapticFeedback.current
+
+    // Per-band "currently snapped to detent" flag — used for haptic edge
+    // detection so we tick once on entering the snap zone, not every frame.
+    val snappedFlags = remember { mutableMapOf<Band, Boolean>() }
 
     // Capture latest state + callbacks without re-keying pointerInput
     // (which would cancel and restart the gesture coroutine on every drag tick).
@@ -104,6 +113,11 @@ fun EqGraphView(
             .height(240.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White.copy(alpha = 0.03f))
+            // When bypassed, dim the entire canvas (grid + labels + curve +
+            // handles) with one Modifier.alpha pass, then also recolour the
+            // curve/handles themselves to grey via the per-element draw code
+            // below.
+            .alpha(if (bypassed) 0.5f else 1f)
             .pointerInput(Unit) {
                 val hitPx = HIT_RADIUS_DP.dp.toPx()
                 awaitEachGesture {
@@ -124,21 +138,41 @@ fun EqGraphView(
                         val change = ev.changes.first()
                         if (!change.pressed) {
                             active = null
+                            snappedFlags.clear()
                             change.consume()
                             return@awaitEachGesture
                         }
                         val p = change.position
                         // Round drag to nearest 0.1 dB — keeps the display
                         // honest without showing fractional values like +2.347.
-                        fun snapDb(raw: Float) =
-                            ((raw * 10f).roundToInt() / 10f).coerceIn(MIN_DB, MAX_DB)
+                        // Within ±0.3 dB of zero we snap to exactly 0 with a
+                        // haptic tick on the edge entry.
+                        fun snapDb(raw: Float, band: Band): Float {
+                            val rounded = (raw * 10f).roundToInt() / 10f
+                            val coerced = rounded.coerceIn(MIN_DB, MAX_DB)
+                            val snapped = if (kotlin.math.abs(coerced) <= 0.3f) 0f else coerced
+                            val wasSnapped = snappedFlags[band] == true
+                            val isSnapped = snapped == 0f
+                            if (isSnapped != wasSnapped) {
+                                haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                            }
+                            snappedFlags[band] = isSnapped
+                            return snapped
+                        }
                         when (hit) {
-                            Band.BASS -> onBass(snapDb(yFracToDb(p.y / h)))
-                            Band.PRESENCE -> onPresence(snapDb(yFracToDb(p.y / h)))
-                            Band.TREBLE -> onTreble(snapDb(yFracToDb(p.y / h)))
+                            Band.BASS -> onBass(snapDb(yFracToDb(p.y / h), Band.BASS))
+                            Band.PRESENCE -> onPresence(snapDb(yFracToDb(p.y / h), Band.PRESENCE))
+                            Band.TREBLE -> onTreble(snapDb(yFracToDb(p.y / h), Band.TREBLE))
                             Band.LOW_CUT -> {
-                                val freq = xFracToFreq(p.x / w).roundToInt()
-                                onLowCut(freq.coerceIn(20, 200))
+                                val rawFreq = xFracToFreq(p.x / w).roundToInt()
+                                val snappedFreq = if (rawFreq < 25) 20 else rawFreq.coerceIn(20, 200)
+                                val wasSnapped = snappedFlags[Band.LOW_CUT] == true
+                                val isSnapped = snappedFreq == 20
+                                if (isSnapped != wasSnapped) {
+                                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                }
+                                snappedFlags[Band.LOW_CUT] = isSnapped
+                                onLowCut(snappedFreq)
                             }
                         }
                         change.consume()
@@ -146,10 +180,18 @@ fun EqGraphView(
                 }
             }
     ) {
+        // The whole canvas is dimmed via Modifier.alpha when bypassed (above);
+        // here we additionally swap the accent colours for greyscale so it's
+        // unambiguous that the EQ isn't in the audio path.
+        val grey = textColor
+        val effCurve = if (bypassed) grey else curveColor
+        val effFill = if (bypassed) grey.copy(alpha = 0.10f) else fillColor
+        val effHandle = if (bypassed) grey else handleColor
+
         drawGrid(axisColor, textColor, textMeasurer)
-        drawIndividualBandCurves(bassDb, presenceDb, trebleDb, lowCutHz, curveColor)
-        drawCurve(bassDb, presenceDb, trebleDb, lowCutHz, curveColor, fillColor)
-        drawHandles(bassDb, presenceDb, trebleDb, lowCutHz, active, handleColor, textColor, textMeasurer)
+        drawIndividualBandCurves(bassDb, presenceDb, trebleDb, lowCutHz, effCurve, active, 1f)
+        drawCurve(bassDb, presenceDb, trebleDb, lowCutHz, effCurve, effFill, 1f)
+        drawHandles(bassDb, presenceDb, trebleDb, lowCutHz, active, effHandle, textColor, textMeasurer, 1f)
     }
 }
 
@@ -164,12 +206,17 @@ private fun DrawScope.drawIndividualBandCurves(
     trebleDb: Float,
     lowCutHz: Int,
     color: Color,
+    active: Band?,
+    opacityScale: Float,
 ) {
-    val faint = color.copy(alpha = 0.28f)
-    if (bassDb != 0f) drawSingleBandPath(bassDb, 0f, 0f, 0, faint)
-    if (presenceDb != 0f) drawSingleBandPath(0f, presenceDb, 0f, 0, faint)
-    if (trebleDb != 0f) drawSingleBandPath(0f, 0f, trebleDb, 0, faint)
-    if (lowCutHz > 0) drawSingleBandPath(0f, 0f, 0f, lowCutHz, faint)
+    fun alphaFor(band: Band): Float {
+        val base = if (active == null || active == band) 0.28f else 0.10f
+        return base * opacityScale
+    }
+    if (bassDb != 0f) drawSingleBandPath(bassDb, 0f, 0f, 0, color.copy(alpha = alphaFor(Band.BASS)))
+    if (presenceDb != 0f) drawSingleBandPath(0f, presenceDb, 0f, 0, color.copy(alpha = alphaFor(Band.PRESENCE)))
+    if (trebleDb != 0f) drawSingleBandPath(0f, 0f, trebleDb, 0, color.copy(alpha = alphaFor(Band.TREBLE)))
+    if (lowCutHz > 0) drawSingleBandPath(0f, 0f, 0f, lowCutHz, color.copy(alpha = alphaFor(Band.LOW_CUT)))
 }
 
 private fun DrawScope.drawSingleBandPath(
@@ -250,6 +297,7 @@ private fun DrawScope.drawCurve(
     lowCutHz: Int,
     curveColor: Color,
     fillColor: Color,
+    opacityScale: Float,
 ) {
     val w = size.width
     val h = size.height
@@ -276,11 +324,18 @@ private fun DrawScope.drawCurve(
     fill.close()
 
     drawPath(fill, brush = Brush.verticalGradient(
-        colors = listOf(fillColor, fillColor.copy(alpha = 0f)),
+        colors = listOf(
+            fillColor.copy(alpha = fillColor.alpha * opacityScale),
+            fillColor.copy(alpha = 0f),
+        ),
         startY = 0f,
         endY = h,
     ))
-    drawPath(path, color = curveColor, style = Stroke(width = 2.5f.dp.toPx()))
+    drawPath(
+        path,
+        color = curveColor.copy(alpha = curveColor.alpha * opacityScale),
+        style = Stroke(width = 2.5f.dp.toPx()),
+    )
 }
 
 private fun DrawScope.drawHandles(
@@ -292,35 +347,31 @@ private fun DrawScope.drawHandles(
     handleColor: Color,
     textColor: Color,
     textMeasurer: TextMeasurer,
+    opacityScale: Float,
 ) {
     val w = size.width
     val h = size.height
 
-    drawHandle(
-        center = bandCenter(Band.BASS, Size(w, h), bassDb, presenceDb, trebleDb, lowCutHz),
-        isActive = active == Band.BASS,
-        color = handleColor,
-    )
-    drawHandle(
-        center = bandCenter(Band.PRESENCE, Size(w, h), bassDb, presenceDb, trebleDb, lowCutHz),
-        isActive = active == Band.PRESENCE,
-        color = handleColor,
-    )
-    drawHandle(
-        center = bandCenter(Band.TREBLE, Size(w, h), bassDb, presenceDb, trebleDb, lowCutHz),
-        isActive = active == Band.TREBLE,
-        color = handleColor,
-    )
-    drawHandle(
-        center = bandCenter(Band.LOW_CUT, Size(w, h), bassDb, presenceDb, trebleDb, lowCutHz),
-        isActive = active == Band.LOW_CUT,
-        color = handleColor,
-    )
+    fun handleAlpha(band: Band): Float {
+        val base = if (active == null || active == band) 1f else 0.45f
+        return base * opacityScale
+    }
 
-    // Small per-handle labels ("Bass", etc) drawn just above each handle.
-    val labelStyle = TextStyle(color = textColor.copy(alpha = 0.75f), fontSize = 10.sp)
     val bands = listOf(Band.LOW_CUT, Band.BASS, Band.PRESENCE, Band.TREBLE)
     for (band in bands) {
+        drawHandle(
+            center = bandCenter(band, Size(w, h), bassDb, presenceDb, trebleDb, lowCutHz),
+            isActive = active == band,
+            color = handleColor.copy(alpha = handleAlpha(band)),
+        )
+    }
+
+    // Small per-handle labels ("Bass", etc) drawn just above each handle.
+    for (band in bands) {
+        val labelStyle = TextStyle(
+            color = textColor.copy(alpha = 0.75f * handleAlpha(band)),
+            fontSize = 10.sp,
+        )
         val center = bandCenter(band, Size(w, h), bassDb, presenceDb, trebleDb, lowCutHz)
         val text = when (band) {
             Band.LOW_CUT -> "HPF"

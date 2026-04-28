@@ -13,6 +13,7 @@ class EqConfig {
     @Volatile var presenceDb: Float = 0f
     @Volatile var trebleDb: Float = 0f
     @Volatile var lowCutHz: Int = 0
+    @Volatile var bypassed: Boolean = false
 
     fun applyPreset(preset: EqPreset) {
         bassDb = preset.bassDb
