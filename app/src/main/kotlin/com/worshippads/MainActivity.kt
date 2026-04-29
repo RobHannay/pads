@@ -826,7 +826,11 @@ fun EqScreen(
 
 private fun formatDb(db: Float): String {
     val body = "%.1f".format(db)
-    return if (db > 0f) "+$body" else body
+    return when {
+        db > 0f -> "+$body"
+        db < 0f -> body
+        else -> "±$body"
+    }
 }
 
 @Composable
